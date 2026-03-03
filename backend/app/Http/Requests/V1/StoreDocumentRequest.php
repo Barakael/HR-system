@@ -12,7 +12,7 @@ class StoreDocumentRequest extends FormRequest
     {
         return [
             'title'   => 'required|string|max:255',
-            'user_id' => 'required|exists:users,id',
+            'user_id' => 'nullable|exists:users,id',
             'type'    => 'nullable|in:Contract,Legal,Review,Certificate,Policy,Other',
             'file'    => 'nullable|file|mimes:pdf,docx,doc,jpg,jpeg,png|max:10240',
             'status'  => 'nullable|in:Active,Pending',
