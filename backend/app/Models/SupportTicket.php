@@ -11,7 +11,7 @@ class SupportTicket extends Model
     protected static function booted(): void
     {
         static::creating(function ($ticket) {
-            $count = static::withTrashed()->count() + 1;
+            $count = static::count() + 1;
             $ticket->ticket_number = 'TKT-' . str_pad($count, 4, '0', STR_PAD_LEFT);
         });
     }
