@@ -6,35 +6,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, ArrowRightLeft } from "lucide-react";
+import { Plus, ArrowRightLeft, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-interface Transfer {
-  id: string;
-  employee: string;
-  fromDept: string;
-  toDept: string;
-  fromRole: string;
-  toRole: string;
-  effectiveDate: string;
-  reason: string;
-  status: string;
-}
-
-const initialTransfers: Transfer[] = [
-  { id: "1", employee: "James Brown", fromDept: "Marketing", toDept: "Product", fromRole: "Marketing Lead", toRole: "Product Marketing Manager", effectiveDate: "Mar 15, 2026", reason: "Career growth", status: "Approved" },
-  { id: "2", employee: "Jessica Lee", fromDept: "Human Resources", toDept: "Operations", fromRole: "HR Coordinator", toRole: "Operations Analyst", effectiveDate: "Apr 1, 2026", reason: "Role realignment", status: "Pending" },
-  { id: "3", employee: "Michael Chen", fromDept: "Engineering", toDept: "Engineering", fromRole: "Junior Developer", toRole: "Mid-level Developer", effectiveDate: "Mar 1, 2026", reason: "Promotion", status: "Completed" },
-];
+import { useTransfers, useCreateTransfer } from "@/hooks/api/useTransfers";
 
 const Transfers = () => {
-  const [transfers, setTransfers] = useState<Transfer[]>(initialTransfers);
+  const { data: transfers = [], isLoading } = useTransfers();
+  const createTransfer = useCreateTransfer();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ id: "", employee: "", fromDept: "", toDept: "", fromRole: "", toRole: "", effectiveDate: "", reason: "", status: "Pending" });
+  const [form, setForm] = useState({ employee: "", fromDept: "", toDept: "", fromRole: "", toRole: "", effectiveDate: "", reason: "" });
   const { toast } = useToast();
 
   const openAdd = () => {
-    setForm({ id: crypto.randomUUID(), employee: "", fromDept: "", toDept: "", fromRole: "", toRole: "", effectiveDate: "", reason: "", status: "Pending" });
+    setForm({ employee: "", fromDept: "", toDept: "", fromRole: "", toRole: "", effectiveDate: "", reason: "" });
     setDialogOpen(true);
   };
 
@@ -43,9 +27,21 @@ const Transfers = () => {
       toast({ title: "Please fill required fields", variant: "destructive" });
       return;
     }
-    setTransfers((prev) => [...prev, form]);
-    toast({ title: "Transfer request created" });
-    setDialogOpen(false);
+    createTransfer.mutate({
+      employee: form.employee,
+      from_department: form.fromDept,
+      to_department: form.toDept,
+      from_role: form.fromRole,
+      to_role: form.toRole,
+      effective_date: form.effectiveDate,
+      reason: form.reason,
+    }, {
+      onSuccess: () => {
+        toast({ title: "Transfer request created" });
+        setDialogOpen(false);
+      },
+      onError: () => toast({ title: "Failed to create transfer", variant: "destructive" }),
+    });
   };
 
   return (
@@ -62,42 +58,46 @@ const Transfers = () => {
         <div className="px-5 py-4 border-b border-border">
           <h2 className="font-semibold text-card-foreground">Transfer Records</h2>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-secondary/50">
-                <th className="text-left px-5 py-3 font-medium text-muted-foreground">Employee</th>
-                <th className="text-left px-5 py-3 font-medium text-muted-foreground">From</th>
-                <th className="text-left px-5 py-3 font-medium text-muted-foreground"></th>
-                <th className="text-left px-5 py-3 font-medium text-muted-foreground">To</th>
-                <th className="text-left px-5 py-3 font-medium text-muted-foreground">Effective Date</th>
-                <th className="text-left px-5 py-3 font-medium text-muted-foreground">Reason</th>
-                <th className="text-left px-5 py-3 font-medium text-muted-foreground">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {transfers.map((t) => (
-                <tr key={t.id} className="hover:bg-secondary/30 transition-colors">
-                  <td className="px-5 py-3.5 font-medium text-card-foreground">{t.employee}</td>
-                  <td className="px-5 py-3.5 text-muted-foreground">
-                    <p>{t.fromDept}</p>
-                    <p className="text-xs">{t.fromRole}</p>
-                  </td>
-                  <td className="px-5 py-3.5"><ArrowRightLeft className="h-4 w-4 text-muted-foreground" /></td>
-                  <td className="px-5 py-3.5 text-muted-foreground">
-                    <p>{t.toDept}</p>
-                    <p className="text-xs">{t.toRole}</p>
-                  </td>
-                  <td className="px-5 py-3.5 text-muted-foreground">{t.effectiveDate}</td>
-                  <td className="px-5 py-3.5 text-muted-foreground">{t.reason}</td>
-                  <td className="px-5 py-3.5">
-                    <StatusBadge label={t.status} variant={t.status === "Completed" ? "success" : t.status === "Approved" ? "info" : "warning"} />
-                  </td>
+        {isLoading ? (
+          <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-secondary/50">
+                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">Employee</th>
+                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">From</th>
+                  <th className="text-left px-5 py-3 font-medium text-muted-foreground"></th>
+                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">To</th>
+                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">Effective Date</th>
+                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">Reason</th>
+                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {transfers.map((t) => (
+                  <tr key={t.id} className="hover:bg-secondary/30 transition-colors">
+                    <td className="px-5 py-3.5 font-medium text-card-foreground">{t.employee}</td>
+                    <td className="px-5 py-3.5 text-muted-foreground">
+                      <p>{t.fromDept}</p>
+                      <p className="text-xs">{t.fromRole}</p>
+                    </td>
+                    <td className="px-5 py-3.5"><ArrowRightLeft className="h-4 w-4 text-muted-foreground" /></td>
+                    <td className="px-5 py-3.5 text-muted-foreground">
+                      <p>{t.toDept}</p>
+                      <p className="text-xs">{t.toRole}</p>
+                    </td>
+                    <td className="px-5 py-3.5 text-muted-foreground">{t.effectiveDate}</td>
+                    <td className="px-5 py-3.5 text-muted-foreground">{t.reason}</td>
+                    <td className="px-5 py-3.5">
+                      <StatusBadge label={t.status} variant={t.status === "Completed" ? "success" : t.status === "Approved" ? "info" : "warning"} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -139,7 +139,10 @@ const Transfers = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>Submit Transfer</Button>
+            <Button onClick={handleSave} disabled={createTransfer.isPending}>
+              {createTransfer.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Submit Transfer
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
