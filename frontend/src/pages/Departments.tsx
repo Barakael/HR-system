@@ -4,65 +4,48 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Edit2, Trash2, Users, Building2 } from "lucide-react";
+import { Plus, Edit2, Trash2, Users, Building2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useDepartments, useCreateDepartment, useUpdateDepartment, useDeleteDepartment } from "@/hooks/api/useDepartments";
+import type { Department } from "@/hooks/api/useDepartments";
 
-interface Department {
-  id: string;
-  name: string;
-  head: string;
-  employees: number;
-  description: string;
-}
-
-const initialDepts: Department[] = [
-  { id: "1", name: "Engineering", head: "Sarah Miller", employees: 42, description: "Software development and infrastructure" },
-  { id: "2", name: "Marketing", head: "James Brown", employees: 18, description: "Brand, content, and growth marketing" },
-  { id: "3", name: "Product", head: "Emily Davis", employees: 12, description: "Product strategy and management" },
-  { id: "4", name: "Human Resources", head: "Jessica Lee", employees: 8, description: "People operations and talent" },
-  { id: "5", name: "Finance", head: "Kevin Park", employees: 15, description: "Accounting, budgeting, and financial planning" },
-  { id: "6", name: "Operations", head: "Lisa Nguyen", employees: 22, description: "Business operations and logistics" },
-];
-
-const emptyDept = { id: "", name: "", head: "", employees: 0, description: "" };
+const emptyForm = { name: "", description: "" };
 
 const Departments = () => {
-  const [departments, setDepartments] = useState<Department[]>(initialDepts);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Department | null>(null);
-  const [form, setForm] = useState(emptyDept);
+  const [form, setForm] = useState(emptyForm);
   const { toast } = useToast();
 
-  const openAdd = () => {
-    setEditing(null);
-    setForm({ ...emptyDept, id: crypto.randomUUID() });
-    setDialogOpen(true);
-  };
+  const { data: departments = [], isLoading } = useDepartments();
+  const createDept = useCreateDepartment();
+  const updateDept = useUpdateDepartment();
+  const deleteDept = useDeleteDepartment();
 
+  const openAdd = () => { setEditing(null); setForm(emptyForm); setDialogOpen(true); };
   const openEdit = (dept: Department) => {
     setEditing(dept);
-    setForm({ ...dept });
+    setForm({ name: dept.name, description: dept.description ?? "" });
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
-    if (!form.name || !form.head) {
-      toast({ title: "Please fill required fields", variant: "destructive" });
-      return;
-    }
-    if (editing) {
-      setDepartments((prev) => prev.map((d) => (d.id === form.id ? form : d)));
-      toast({ title: "Department updated" });
-    } else {
-      setDepartments((prev) => [...prev, form]);
-      toast({ title: "Department added" });
-    }
-    setDialogOpen(false);
+  const handleSave = async () => {
+    if (!form.name) { toast({ title: "Please fill required fields", variant: "destructive" }); return; }
+    try {
+      if (editing) {
+        await updateDept.mutateAsync({ id: editing.id, name: form.name, description: form.description });
+        toast({ title: "Department updated" });
+      } else {
+        await createDept.mutateAsync({ name: form.name, description: form.description });
+        toast({ title: "Department added" });
+      }
+      setDialogOpen(false);
+    } catch { toast({ title: "Operation failed", variant: "destructive" }); }
   };
 
-  const handleDelete = (id: string) => {
-    setDepartments((prev) => prev.filter((d) => d.id !== id));
-    toast({ title: "Department removed" });
+  const handleDelete = async (id: number) => {
+    try { await deleteDept.mutateAsync(id); toast({ title: "Department removed" }); }
+    catch { toast({ title: "Failed to delete", variant: "destructive" }); }
   };
 
   return (
@@ -75,6 +58,9 @@ const Departments = () => {
         </Button>
       }
     >
+      {isLoading ? (
+        <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {departments.map((dept) => (
           <div key={dept.id} className="bg-card rounded-lg border border-border p-5 shadow-sm hover:shadow-md transition-shadow">
@@ -85,7 +71,7 @@ const Departments = () => {
                 </div>
                 <div>
                   <p className="font-semibold text-card-foreground">{dept.name}</p>
-                  <p className="text-xs text-muted-foreground">Head: {dept.head}</p>
+                  {dept.head && <p className="text-xs text-muted-foreground">Head: {dept.head.name}</p>}
                 </div>
               </div>
               <div className="flex items-center gap-1">
@@ -99,11 +85,12 @@ const Departments = () => {
             </div>
             <p className="text-sm text-muted-foreground mb-3">{dept.description}</p>
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Users className="h-3.5 w-3.5" /> {dept.employees} employees
+              <Users className="h-3.5 w-3.5" /> {dept.profiles_count ?? 0} employees
             </div>
           </div>
         ))}
       </div>
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
@@ -115,14 +102,7 @@ const Departments = () => {
               <Label>Department Name *</Label>
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </div>
-            <div className="space-y-2">
-              <Label>Department Head *</Label>
-              <Input value={form.head} onChange={(e) => setForm({ ...form, head: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Number of Employees</Label>
-              <Input type="number" value={form.employees} onChange={(e) => setForm({ ...form, employees: parseInt(e.target.value) || 0 })} />
-            </div>
+
             <div className="space-y-2">
               <Label>Description</Label>
               <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
@@ -130,7 +110,10 @@ const Departments = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>{editing ? "Save Changes" : "Add Department"}</Button>
+            <Button onClick={handleSave} disabled={createDept.isPending || updateDept.isPending}>
+              {(createDept.isPending || updateDept.isPending) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {editing ? "Save Changes" : "Add Department"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
