@@ -1,35 +1,16 @@
 import { HRLayout } from "@/components/HRLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
-import { Clock, CheckCircle2, XCircle, AlertCircle, Search } from "lucide-react";
+import { Clock, CheckCircle2, XCircle, AlertCircle, Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { StatsCard } from "@/components/StatsCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAttendance, useClockIn, useClockOut } from "@/hooks/api/useAttendance";
+import { useToast } from "@/hooks/use-toast";
 
 type AttendanceStatus = "Present" | "Absent" | "Late" | "Half Day";
-
-interface AttendanceRecord {
-  date: string;
-  employee: string;
-  clockIn: string;
-  clockOut: string;
-  hours: string;
-  status: AttendanceStatus;
-}
-
-const allRecords: AttendanceRecord[] = [
-  { date: "Mar 2, 2026", employee: "John Doe", clockIn: "08:55", clockOut: "17:30", hours: "8h 35m", status: "Present" },
-  { date: "Mar 1, 2026", employee: "John Doe", clockIn: "09:10", clockOut: "17:00", hours: "7h 50m", status: "Present" },
-  { date: "Feb 28, 2026", employee: "John Doe", clockIn: "10:05", clockOut: "17:15", hours: "7h 10m", status: "Late" },
-  { date: "Feb 27, 2026", employee: "John Doe", clockIn: "—", clockOut: "—", hours: "—", status: "Absent" },
-  { date: "Feb 26, 2026", employee: "John Doe", clockIn: "09:00", clockOut: "13:00", hours: "4h 00m", status: "Half Day" },
-  { date: "Mar 2, 2026", employee: "Sarah Miller", clockIn: "08:45", clockOut: "17:15", hours: "8h 30m", status: "Present" },
-  { date: "Mar 2, 2026", employee: "Michael Chen", clockIn: "—", clockOut: "—", hours: "—", status: "Absent" },
-  { date: "Mar 2, 2026", employee: "Emily Davis", clockIn: "09:30", clockOut: "17:30", hours: "8h 00m", status: "Late" },
-  { date: "Mar 1, 2026", employee: "Sarah Miller", clockIn: "08:50", clockOut: "17:20", hours: "8h 30m", status: "Present" },
-  { date: "Mar 1, 2026", employee: "Michael Chen", clockIn: "09:05", clockOut: "17:00", hours: "7h 55m", status: "Present" },
-];
 
 const statusVariant: Record<AttendanceStatus, "success" | "destructive" | "warning" | "default"> = {
   Present: "success",
@@ -39,28 +20,55 @@ const statusVariant: Record<AttendanceStatus, "success" | "destructive" | "warni
 };
 
 export default function Attendance() {
-  const { currentUser, isHRAdmin } = useAuth();
+  const { isHRAdmin } = useAuth();
   const [search, setSearch] = useState("");
   const [month, setMonth] = useState("March 2026");
+  const { toast } = useToast();
 
-  const baseRecords = isHRAdmin
-    ? allRecords
-    : allRecords.filter((r) => r.employee === currentUser?.name);
+  const { data: records = [], isLoading } = useAttendance({ search: search || undefined });
+  const clockIn  = useClockIn();
+  const clockOut = useClockOut();
 
-  const filtered = baseRecords.filter(
-    (r) =>
-      r.employee.toLowerCase().includes(search.toLowerCase()) ||
-      r.date.toLowerCase().includes(search.toLowerCase())
-  );
+  const handleClockIn = async () => {
+    try {
+      await clockIn.mutateAsync();
+      toast({ title: "Clocked in successfully" });
+    } catch {
+      toast({ title: "Failed to clock in", variant: "destructive" });
+    }
+  };
 
-  const present = baseRecords.filter((r) => r.status === "Present").length;
-  const absent = baseRecords.filter((r) => r.status === "Absent").length;
-  const late = baseRecords.filter((r) => r.status === "Late").length;
+  const handleClockOut = async () => {
+    try {
+      await clockOut.mutateAsync();
+      toast({ title: "Clocked out successfully" });
+    } catch {
+      toast({ title: "Failed to clock out", variant: "destructive" });
+    }
+  };
+
+  const present = records.filter((r) => r.status === "Present").length;
+  const absent  = records.filter((r) => r.status === "Absent").length;
+  const late    = records.filter((r) => r.status === "Late").length;
 
   return (
     <HRLayout
       title="Attendance"
       subtitle={isHRAdmin ? "All employee attendance records" : "Your attendance history"}
+      actions={
+        !isHRAdmin ? (
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handleClockIn} disabled={clockIn.isPending}>
+              {clockIn.isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+              Clock In
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleClockOut} disabled={clockOut.isPending}>
+              {clockOut.isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+              Clock Out
+            </Button>
+          </div>
+        ) : undefined
+      }
     >
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <StatsCard title="Present" value={present} icon={CheckCircle2} variant="success" />
@@ -93,42 +101,47 @@ export default function Attendance() {
             )}
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-secondary/40">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground">Date</th>
-                {isHRAdmin && <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Employee</th>}
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Clock In</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Clock Out</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Hours</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filtered.map((rec, i) => (
-                <tr key={i} className="hover:bg-secondary/30 transition-colors">
-                  <td className="px-5 py-3.5 text-foreground whitespace-nowrap">{rec.date}</td>
-                  {isHRAdmin && <td className="px-4 py-3.5 font-medium text-foreground">{rec.employee}</td>}
-                  <td className="px-4 py-3.5 font-mono text-sm text-foreground">{rec.clockIn}</td>
-                  <td className="px-4 py-3.5 font-mono text-sm text-foreground">{rec.clockOut}</td>
-                  <td className="px-4 py-3.5 text-muted-foreground">{rec.hours}</td>
-                  <td className="px-4 py-3.5">
-                    <StatusBadge label={rec.status} variant={statusVariant[rec.status]} />
-                  </td>
+        {isLoading ? (
+          <div className="flex justify-center py-16"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-secondary/40">
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground">Date</th>
+                  {isHRAdmin && <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Employee</th>}
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Clock In</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Clock Out</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Hours</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Status</th>
                 </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-5 py-10 text-center text-sm text-muted-foreground">
-                    No records found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {records.map((rec, i) => (
+                  <tr key={rec.id ?? i} className="hover:bg-secondary/30 transition-colors">
+                    <td className="px-5 py-3.5 text-foreground whitespace-nowrap">{rec.date}</td>
+                    {isHRAdmin && <td className="px-4 py-3.5 font-medium text-foreground">{rec.employee}</td>}
+                    <td className="px-4 py-3.5 font-mono text-sm text-foreground">{rec.clockIn}</td>
+                    <td className="px-4 py-3.5 font-mono text-sm text-foreground">{rec.clockOut}</td>
+                    <td className="px-4 py-3.5 text-muted-foreground">{rec.hours}</td>
+                    <td className="px-4 py-3.5">
+                      <StatusBadge label={rec.status} variant={statusVariant[rec.status] ?? "default"} />
+                    </td>
+                  </tr>
+                ))}
+                {records.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-5 py-10 text-center text-sm text-muted-foreground">
+                      No records found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </HRLayout>
   );
 }
+
