@@ -1,7 +1,7 @@
 import { HRLayout } from "@/components/HRLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
-import { Plus, Headphones, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import { Plus, Clock, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,37 +10,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { StatsCard } from "@/components/StatsCard";
 import { StatusBadge } from "@/components/StatusBadge";
+import { useToast } from "@/hooks/use-toast";
+import { useTickets, useCreateTicket } from "@/hooks/api/useHelpDesk";
 
 type TicketStatus = "Open" | "In Progress" | "Resolved";
 type TicketPriority = "Low" | "Medium" | "High";
 type TicketCategory = "IT" | "HR" | "Facilities" | "Other";
 
-interface Ticket {
-  id: string;
-  subject: string;
-  category: TicketCategory;
-  priority: TicketPriority;
-  status: TicketStatus;
-  submittedBy: string;
-  date: string;
-  description: string;
-}
-
-const allTickets: Ticket[] = [
-  { id: "TKT-001", subject: "Laptop not booting", category: "IT", priority: "High", status: "In Progress", submittedBy: "John Doe", date: "Mar 1, 2026", description: "MacBook Pro won't start after latest update." },
-  { id: "TKT-002", subject: "Payslip not received", category: "HR", priority: "Medium", status: "Open", submittedBy: "Sarah Miller", date: "Feb 28, 2026", description: "February payslip missing from portal." },
-  { id: "TKT-003", subject: "Air conditioning broken", category: "Facilities", priority: "Low", status: "Open", submittedBy: "Michael Chen", date: "Feb 27, 2026", description: "AC unit on floor 3 not working." },
-  { id: "TKT-004", subject: "VPN access request", category: "IT", priority: "Medium", status: "Resolved", submittedBy: "John Doe", date: "Feb 20, 2026", description: "Need VPN access for remote work." },
-  { id: "TKT-005", subject: "Leave balance incorrect", category: "HR", priority: "High", status: "Resolved", submittedBy: "Emily Davis", date: "Feb 18, 2026", description: "Leave days not matching HR records." },
-];
-
-const statusVariant: Record<TicketStatus, "info" | "warning" | "success"> = {
+const statusVariant: Record<string, "info" | "warning" | "success"> = {
   "Open": "info",
   "In Progress": "warning",
   "Resolved": "success",
 };
 
-const priorityVariant: Record<TicketPriority, "destructive" | "warning" | "default"> = {
+const priorityVariant: Record<string, "destructive" | "warning" | "default"> = {
   "High": "destructive",
   "Medium": "warning",
   "Low": "default",
@@ -48,33 +31,30 @@ const priorityVariant: Record<TicketPriority, "destructive" | "warning" | "defau
 
 export default function HelpDesk() {
   const { currentUser, isHRAdmin } = useAuth();
+  const { data: allTickets = [], isLoading } = useTickets();
+  const createTicket = useCreateTicket();
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [subject, setSubject] = useState("");
   const [category, setCategory] = useState<TicketCategory>("IT");
   const [priority, setPriority] = useState<TicketPriority>("Medium");
   const [description, setDescription] = useState("");
-  const [tickets, setTickets] = useState(allTickets);
 
-  const myTickets = isHRAdmin ? tickets : tickets.filter((t) => t.submittedBy === currentUser?.name);
+  const myTickets = isHRAdmin ? allTickets : allTickets.filter((t) => t.employee === currentUser?.name);
   const openCount = myTickets.filter((t) => t.status === "Open").length;
   const inProgressCount = myTickets.filter((t) => t.status === "In Progress").length;
   const resolvedCount = myTickets.filter((t) => t.status === "Resolved").length;
 
   const handleSubmit = () => {
-    if (!subject.trim() || !currentUser) return;
-    const newTicket: Ticket = {
-      id: `TKT-${String(tickets.length + 1).padStart(3, "0")}`,
-      subject,
-      category,
-      priority,
-      status: "Open",
-      submittedBy: currentUser.name,
-      date: "Mar 2, 2026",
-      description,
-    };
-    setTickets((prev) => [newTicket, ...prev]);
-    setSubject(""); setCategory("IT"); setPriority("Medium"); setDescription("");
-    setOpen(false);
+    if (!subject.trim()) return;
+    createTicket.mutate({ subject, category, priority, description }, {
+      onSuccess: () => {
+        toast({ title: "Ticket submitted" });
+        setSubject(""); setCategory("IT"); setPriority("Medium"); setDescription("");
+        setOpen(false);
+      },
+      onError: () => toast({ title: "Failed to submit ticket", variant: "destructive" }),
+    });
   };
 
   return (
@@ -97,41 +77,45 @@ export default function HelpDesk() {
         <div className="px-5 py-4 border-b border-border">
           <h2 className="font-semibold text-foreground">{isHRAdmin ? "All Tickets" : "My Tickets"}</h2>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-secondary/40">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground">Ticket</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Subject</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Category</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Priority</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Status</th>
-                {isHRAdmin && <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Submitted By</th>}
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {myTickets.map((ticket) => (
-                <tr key={ticket.id} className="hover:bg-secondary/30 transition-colors">
-                  <td className="px-5 py-3.5 font-mono text-xs text-muted-foreground">{ticket.id}</td>
-                  <td className="px-4 py-3.5 font-medium text-foreground max-w-xs truncate">{ticket.subject}</td>
-                  <td className="px-4 py-3.5"><StatusBadge label={ticket.category} variant="default" /></td>
-                  <td className="px-4 py-3.5"><StatusBadge label={ticket.priority} variant={priorityVariant[ticket.priority]} /></td>
-                  <td className="px-4 py-3.5"><StatusBadge label={ticket.status} variant={statusVariant[ticket.status]} /></td>
-                  {isHRAdmin && <td className="px-4 py-3.5 text-foreground">{ticket.submittedBy}</td>}
-                  <td className="px-4 py-3.5 text-muted-foreground whitespace-nowrap">{ticket.date}</td>
+        {isLoading ? (
+          <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-secondary/40">
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground">Ticket</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Subject</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Category</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Priority</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Status</th>
+                  {isHRAdmin && <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Submitted By</th>}
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Date</th>
                 </tr>
-              ))}
-              {myTickets.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-sm text-muted-foreground">
-                    No tickets found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {myTickets.map((ticket) => (
+                  <tr key={ticket.id} className="hover:bg-secondary/30 transition-colors">
+                    <td className="px-5 py-3.5 font-mono text-xs text-muted-foreground">{ticket.ticket_number}</td>
+                    <td className="px-4 py-3.5 font-medium text-foreground max-w-xs truncate">{ticket.subject}</td>
+                    <td className="px-4 py-3.5"><StatusBadge label={ticket.category} variant="default" /></td>
+                    <td className="px-4 py-3.5"><StatusBadge label={ticket.priority} variant={priorityVariant[ticket.priority] ?? "default"} /></td>
+                    <td className="px-4 py-3.5"><StatusBadge label={ticket.status} variant={statusVariant[ticket.status] ?? "default"} /></td>
+                    {isHRAdmin && <td className="px-4 py-3.5 text-foreground">{ticket.employee}</td>}
+                    <td className="px-4 py-3.5 text-muted-foreground whitespace-nowrap">{ticket.created_at}</td>
+                  </tr>
+                ))}
+                {myTickets.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-5 py-10 text-center text-sm text-muted-foreground">
+                      No tickets found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -175,7 +159,10 @@ export default function HelpDesk() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={!subject.trim()}>Submit Ticket</Button>
+            <Button onClick={handleSubmit} disabled={!subject.trim() || createTicket.isPending}>
+              {createTicket.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Submit Ticket
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
