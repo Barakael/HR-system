@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
 import { Plus, Star, TrendingUp, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -20,7 +20,7 @@ const ratingColor = (r: number) => {
 
 const Performance = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ employee_id: "", department: "", reviewer_id: "", rating: 5, period: "Q1 2026", feedback: "" });
+  const [form, setForm] = useState({ employee_id: "", department: "", role: "", reviewer_id: "", rating: 5, period: "Q1 2026", feedback: "" });
   const [empSearch, setEmpSearch] = useState("");
   const [empLabel, setEmpLabel] = useState("");
   const [showEmpList, setShowEmpList] = useState(false);
@@ -34,7 +34,7 @@ const Performance = () => {
   const createReview = useCreateReview();
 
   const openAdd = () => {
-    setForm({ employee_id: "", department: "", reviewer_id: "", rating: 5, period: "Q1 2026", feedback: "" });
+    setForm({ employee_id: "", department: "", role: "", reviewer_id: "", rating: 5, period: "Q1 2026", feedback: "" });
     setEmpSearch("");
     setEmpLabel("");
     setShowEmpList(false);
@@ -111,7 +111,7 @@ const Performance = () => {
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Add Performance Review</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Add Performance Review</DialogTitle><DialogDescription>Rate employee performance on a scale of 1-10.</DialogDescription></DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2" ref={empRef}>
@@ -137,7 +137,7 @@ const Performance = () => {
                           className="flex flex-col px-3 py-2 cursor-pointer hover:bg-accent"
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => {
-                            setForm({ ...form, employee_id: String(emp.id) });
+                            setForm({ ...form, employee_id: String(emp.id), department: emp.dept, role: emp.role || "" });
                             setEmpLabel(emp.name);
                             setEmpSearch("");
                             setShowEmpList(false);
@@ -152,6 +152,16 @@ const Performance = () => {
                 </div>
               </div>
               <div className="space-y-2"><Label>Period</Label><Input value={form.period} onChange={(e) => setForm({ ...form, period: e.target.value })} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Department</Label>
+                <Input value={form.department} disabled className="bg-muted" />
+              </div>
+              <div className="space-y-2">
+                <Label>Role / Title</Label>
+                <Input value={form.role} disabled className="bg-muted" />
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Rating: {form.rating}/10</Label>
