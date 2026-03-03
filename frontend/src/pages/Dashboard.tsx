@@ -2,6 +2,7 @@ import { HRLayout } from "@/components/HRLayout";
 import { StatsCard } from "@/components/StatsCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDashboardStats } from "@/hooks/api/useDashboard";
 import {
   Users,
   UserPlus,
@@ -12,16 +13,9 @@ import {
   CheckSquare,
   BookOpen,
   Star,
+  Loader2,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-
-const recentActivities = [
-  { action: "Leave request approved", person: "Sarah Miller", time: "2 hours ago", type: "leave" as const },
-  { action: "New employee onboarded", person: "Michael Chen", time: "5 hours ago", type: "hire" as const },
-  { action: "Performance review submitted", person: "Emily Davis", time: "1 day ago", type: "review" as const },
-  { action: "Exit clearance completed", person: "Robert Wilson", time: "1 day ago", type: "exit" as const },
-  { action: "Training course completed", person: "Jessica Lee", time: "2 days ago", type: "training" as const },
-];
 
 const activityIcons = {
   leave: CalendarDays,
@@ -30,13 +24,6 @@ const activityIcons = {
   exit: FileText,
   training: CheckSquare,
 };
-
-const upcomingEvents = [
-  { title: "Q1 Performance Reviews", date: "Mar 1-15", status: "Upcoming" },
-  { title: "New Hire Orientation", date: "Mar 3", status: "Scheduled" },
-  { title: "Benefits Enrollment", date: "Mar 10", status: "Upcoming" },
-  { title: "Team Building Event", date: "Mar 18", status: "Planning" },
-];
 
 const employeeActivities = [
   { action: "Leave request submitted", time: "Today, 9:00 AM", type: "leave" as const },
@@ -50,8 +37,16 @@ const myUpcomingEvents = [
   { title: "Benefits Enrollment Deadline", date: "Mar 10", status: "Urgent" },
 ];
 
+const upcomingEvents = [
+  { title: "Q1 Performance Reviews", date: "Mar 1-15", status: "Upcoming" },
+  { title: "New Hire Orientation", date: "Mar 3", status: "Scheduled" },
+  { title: "Benefits Enrollment", date: "Mar 10", status: "Upcoming" },
+  { title: "Team Building Event", date: "Mar 18", status: "Planning" },
+];
+
 const Dashboard = () => {
   const { currentUser, isHRAdmin } = useAuth();
+  const { data: stats, isLoading: statsLoading } = useDashboardStats();
 
   if (!isHRAdmin) {
     return (
@@ -107,7 +102,6 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Onboarding progress for employee */}
         <div className="mt-6 bg-card rounded-lg border border-border shadow-sm p-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-card-foreground">Onboarding Checklist</h2>
@@ -121,12 +115,11 @@ const Dashboard = () => {
   }
 
   return (
-    <HRLayout title="Dashboard" subtitle="Welcome back, Jane. Here's your HR overview.">
-      {/* Stats */}
+    <HRLayout title="Dashboard" subtitle={`Welcome back, ${currentUser?.name?.split(" ")[0]}. Here's your HR overview.`}>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatsCard
           title="Total Employees"
-          value={248}
+          value={statsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (stats?.employee_count ?? "—")}
           icon={Users}
           trend="+12 this month"
           trendUp
@@ -134,54 +127,28 @@ const Dashboard = () => {
         />
         <StatsCard
           title="Open Positions"
-          value={14}
+          value={statsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (stats?.open_jobs ?? "—")}
           icon={UserPlus}
-          trend="3 new this week"
+          trend="Hiring now"
           trendUp
           variant="info"
         />
         <StatsCard
           title="On Leave Today"
-          value={8}
+          value={statsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (stats?.on_leave_today ?? "—")}
           icon={CalendarDays}
           variant="warning"
         />
         <StatsCard
           title="Pending Approvals"
-          value={23}
+          value={statsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (stats?.pending_approvals ?? "—")}
           icon={Clock}
-          trend="5 urgent"
           variant="default"
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Activity */}
         <div className="lg:col-span-2 bg-card rounded-lg border border-border shadow-sm">
-          <div className="px-5 py-4 border-b border-border">
-            <h2 className="font-semibold text-card-foreground">Recent Activity</h2>
-          </div>
-          <div className="divide-y divide-border">
-            {recentActivities.map((activity, i) => {
-              const Icon = activityIcons[activity.type];
-              return (
-                <div key={i} className="flex items-center gap-4 px-5 py-3.5 hover:bg-secondary/50 transition-colors">
-                  <div className="p-2 rounded-lg bg-secondary">
-                    <Icon className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-card-foreground">{activity.action}</p>
-                    <p className="text-xs text-muted-foreground">{activity.person}</p>
-                  </div>
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">{activity.time}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Upcoming Events */}
-        <div className="bg-card rounded-lg border border-border shadow-sm">
           <div className="px-5 py-4 border-b border-border">
             <h2 className="font-semibold text-card-foreground">Upcoming Events</h2>
           </div>
@@ -198,6 +165,24 @@ const Dashboard = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        <div className="bg-card rounded-lg border border-border shadow-sm">
+          <div className="px-5 py-4 border-b border-border">
+            <h2 className="font-semibold text-card-foreground">Quick Stats</h2>
+          </div>
+          <div className="p-5 space-y-4">
+            {statsLoading ? (
+              <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+            ) : (
+              <>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Total Employees</span><span className="font-medium">{stats?.employee_count ?? "—"}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Open Positions</span><span className="font-medium">{stats?.open_jobs ?? "—"}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">On Leave Today</span><span className="font-medium">{stats?.on_leave_today ?? "—"}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Pending Approvals</span><span className="font-medium text-amber-600">{stats?.pending_approvals ?? "—"}</span></div>
+              </>
+            )}
           </div>
         </div>
       </div>
