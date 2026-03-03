@@ -1,16 +1,9 @@
 import { HRLayout } from "@/components/HRLayout";
 import { StatsCard } from "@/components/StatsCard";
-import { Users, TrendingUp, CalendarDays, DollarSign, BarChart3 } from "lucide-react";
+import { Users, TrendingUp, CalendarDays, DollarSign } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
-
-const deptData = [
-  { name: "Engineering", count: 42 },
-  { name: "Marketing", count: 18 },
-  { name: "Product", count: 12 },
-  { name: "HR", count: 8 },
-  { name: "Finance", count: 15 },
-  { name: "Operations", count: 22 },
-];
+import { useDashboardStats } from "@/hooks/api/useDashboard";
+import { useDepartments } from "@/hooks/api/useDepartments";
 
 const leaveData = [
   { month: "Sep", days: 45 },
@@ -30,10 +23,18 @@ const performanceData = [
 const COLORS = ["hsl(152, 60%, 40%)", "hsl(38, 92%, 50%)", "hsl(0, 72%, 51%)"];
 
 const Reports = () => {
+  const { data: stats } = useDashboardStats();
+  const { data: departments = [] } = useDepartments();
+
+  const deptData = departments.map((d) => ({
+    name: d.name,
+    count: d.profiles_count ?? 0,
+  }));
+
   return (
     <HRLayout title="Reports" subtitle="HR analytics and insights">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatsCard title="Total Employees" value={248} icon={Users} trend="+12 this month" trendUp variant="accent" />
+        <StatsCard title="Total Employees" value={stats?.employee_count ?? 0} icon={Users} variant="accent" />
         <StatsCard title="Avg. Performance" value="7.5/10" icon={TrendingUp} variant="success" />
         <StatsCard title="Leave Utilization" value="62%" icon={CalendarDays} variant="info" />
         <StatsCard title="Monthly Payroll" value="$1.2M" icon={DollarSign} variant="warning" />
@@ -43,7 +44,7 @@ const Reports = () => {
         <div className="bg-card rounded-lg border border-border p-5 shadow-sm">
           <h3 className="font-semibold text-card-foreground mb-4">Employees by Department</h3>
           <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={deptData}>
+            <BarChart data={deptData.length > 0 ? deptData : [{ name: "No data", count: 0 }]}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(210, 14%, 89%)" />
               <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="hsl(210, 10%, 46%)" />
               <YAxis tick={{ fontSize: 12 }} stroke="hsl(210, 10%, 46%)" />
