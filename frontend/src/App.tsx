@@ -26,6 +26,7 @@ import MyProfile from "./pages/MyProfile";
 import Onboarding from "./pages/Onboarding";
 import HelpDesk from "./pages/HelpDesk";
 import Attendance from "./pages/Attendance";
+import Stations from "./pages/Stations";
 import { PlaceholderPage } from "./components/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 import {
@@ -50,6 +51,7 @@ const App = () => (
           <Route path="/my-performance" element={<ProtectedRoute><PlaceholderPage title="My Performance" subtitle="View your goals and feedback" icon={Target} /></ProtectedRoute>} />
           <Route path="/employees" element={<ProtectedRoute role="hr_admin"><Employees /></ProtectedRoute>} />
           <Route path="/departments" element={<ProtectedRoute role="hr_admin"><Departments /></ProtectedRoute>} />
+          <Route path="/stations" element={<ProtectedRoute role="hr_admin"><Stations /></ProtectedRoute>} />
           <Route path="/org-chart" element={<ProtectedRoute role="hr_admin"><PlaceholderPage title="Org Chart" subtitle="Visual reporting hierarchy" icon={Network} /></ProtectedRoute>} />
           <Route path="/documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
           <Route path="/surveys" element={<ProtectedRoute><Surveys /></ProtectedRoute>} />

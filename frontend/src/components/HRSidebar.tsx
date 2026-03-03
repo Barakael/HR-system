@@ -7,6 +7,7 @@ import {
   Target,
   Users,
   Building2,
+  MapPin,
   Network,
   FileText,
   ClipboardList,
@@ -56,6 +57,7 @@ const hrAdminSections: NavSection[] = [
     items: [
       { title: "Employees", url: "/employees", icon: Users },
       { title: "Departments", url: "/departments", icon: Building2 },
+      { title: "Stations", url: "/stations", icon: MapPin },
     ],
   },
   {
