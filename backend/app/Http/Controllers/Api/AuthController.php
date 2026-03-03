@@ -44,6 +44,9 @@ class AuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         $user = $request->user()->load('profile.department', 'emergencyContact');
-        return response()->json(['user' => new UserResource($user)]);
+        return response()->json([
+            'user' => new UserResource($user),
+            'role' => $user->getRoleNames()->first(),
+        ]);
     }
 }

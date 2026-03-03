@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\LeaveController;
 use App\Http\Controllers\Api\V1\OnboardingController;
 use App\Http\Controllers\Api\V1\PayslipController;
 use App\Http\Controllers\Api\V1\PerformanceController;
+use App\Http\Controllers\Api\V1\StationController;
 use App\Http\Controllers\Api\V1\SurveyController;
 use App\Http\Controllers\Api\V1\TicketController;
 use App\Http\Controllers\Api\V1\TrainingController;
@@ -38,6 +39,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Departments
         Route::apiResource('departments', DepartmentController::class);
+
+        // Stations
+        Route::apiResource('stations', StationController::class);
 
         // Attendance
         Route::get('/attendance',            [AttendanceController::class, 'index']);
