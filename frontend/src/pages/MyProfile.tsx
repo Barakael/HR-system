@@ -1,27 +1,40 @@
 import { HRLayout } from "@/components/HRLayout";
 import { useAuth } from "@/contexts/AuthContext";
-import { useState } from "react";
-import { User, Mail, Phone, Building2, MapPin, Shield, Edit2, Check, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { User, Mail, Phone, Building2, MapPin, Shield, Edit2, Check, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StatusBadge } from "@/components/StatusBadge";
-import { cn } from "@/lib/utils";
-
-const mockProfile = {
-  phone: "+1 (555) 012-3456",
-  location: "New York, NY",
-  startDate: "January 15, 2022",
-  manager: "Jane Cooper",
-  employeeId: "EMP-00042",
-  emergencyContact: { name: "Mary Doe", relation: "Spouse", phone: "+1 (555) 987-6543" },
-};
+import { useProfileDetail, useUpdateProfile } from "@/hooks/api/useProfile";
+import { useToast } from "@/hooks/use-toast";
 
 export default function MyProfile() {
   const { currentUser } = useAuth();
+  const { data: profile, isLoading } = useProfileDetail(currentUser?.id);
+  const updateProfile = useUpdateProfile();
+  const { toast } = useToast();
   const [editing, setEditing] = useState(false);
-  const [phone, setPhone] = useState(mockProfile.phone);
-  const [location, setLocation] = useState(mockProfile.location);
+  const [phone, setPhone] = useState("");
+  const [location, setLocation] = useState("");
+
+  useEffect(() => {
+    if (profile) {
+      setPhone(profile.phone);
+      setLocation(profile.location);
+    }
+  }, [profile]);
+
+  const handleSave = () => {
+    if (!currentUser) return;
+    updateProfile.mutate({ id: currentUser.id, phone, location }, {
+      onSuccess: () => {
+        toast({ title: "Profile updated" });
+        setEditing(false);
+      },
+      onError: () => toast({ title: "Failed to update profile", variant: "destructive" }),
+    });
+  };
 
   if (!currentUser) return null;
 
@@ -31,9 +44,9 @@ export default function MyProfile() {
     { icon: Building2, label: "Department", value: currentUser.department },
     { icon: MapPin, label: "Location", value: location, editable: true },
     { icon: Shield, label: "Role", value: currentUser.title },
-    { icon: User, label: "Employee ID", value: mockProfile.employeeId },
-    { icon: User, label: "Start Date", value: mockProfile.startDate },
-    { icon: User, label: "Manager", value: mockProfile.manager },
+    { icon: User, label: "Employee ID", value: profile?.employeeId ?? "" },
+    { icon: User, label: "Start Date", value: profile?.startDate ?? "" },
+    { icon: User, label: "Manager", value: profile?.manager ?? "" },
   ];
 
   return (
@@ -46,8 +59,9 @@ export default function MyProfile() {
             <Button size="sm" variant="outline" onClick={() => setEditing(false)}>
               <X className="h-4 w-4 mr-1" /> Cancel
             </Button>
-            <Button size="sm" onClick={() => setEditing(false)}>
-              <Check className="h-4 w-4 mr-1" /> Save
+            <Button size="sm" onClick={handleSave} disabled={updateProfile.isPending}>
+              {updateProfile.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
+              Save
             </Button>
           </div>
         ) : (
@@ -78,46 +92,50 @@ export default function MyProfile() {
         <div className="lg:col-span-2 space-y-4">
           <div className="bg-card border border-border rounded-xl p-6">
             <h3 className="font-semibold text-foreground mb-4">Personal Information</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {infoRows.map(({ icon: Icon, label, value, editable }) => (
-                <div key={label}>
-                  <Label className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
-                    <Icon className="h-3.5 w-3.5" /> {label}
-                  </Label>
-                  {editing && editable ? (
-                    <Input
-                      value={label === "Phone" ? phone : location}
-                      onChange={(e) =>
-                        label === "Phone" ? setPhone(e.target.value) : setLocation(e.target.value)
-                      }
-                      className="h-8 text-sm"
-                    />
-                  ) : (
-                    <p className="text-sm font-medium text-foreground">{value}</p>
-                  )}
-                </div>
-              ))}
-            </div>
+            {isLoading ? (
+              <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {infoRows.map(({ icon: Icon, label, value, editable }) => (
+                  <div key={label}>
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
+                      <Icon className="h-3.5 w-3.5" /> {label}
+                    </Label>
+                    {editing && editable ? (
+                      <Input
+                        value={label === "Phone" ? phone : location}
+                        onChange={(e) => label === "Phone" ? setPhone(e.target.value) : setLocation(e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                    ) : (
+                      <p className="text-sm font-medium text-foreground">{value}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Emergency Contact */}
-          <div className="bg-card border border-border rounded-xl p-6">
-            <h3 className="font-semibold text-foreground mb-4">Emergency Contact</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <Label className="text-xs text-muted-foreground mb-1">Name</Label>
-                <p className="text-sm font-medium text-foreground">{mockProfile.emergencyContact.name}</p>
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground mb-1">Relation</Label>
-                <p className="text-sm font-medium text-foreground">{mockProfile.emergencyContact.relation}</p>
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground mb-1">Phone</Label>
-                <p className="text-sm font-medium text-foreground">{mockProfile.emergencyContact.phone}</p>
+          {profile?.emergencyContact && (
+            <div className="bg-card border border-border rounded-xl p-6">
+              <h3 className="font-semibold text-foreground mb-4">Emergency Contact</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <Label className="text-xs text-muted-foreground mb-1">Name</Label>
+                  <p className="text-sm font-medium text-foreground">{profile.emergencyContact.name}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground mb-1">Relation</Label>
+                  <p className="text-sm font-medium text-foreground">{profile.emergencyContact.relation}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground mb-1">Phone</Label>
+                  <p className="text-sm font-medium text-foreground">{profile.emergencyContact.phone}</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </HRLayout>
