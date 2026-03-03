@@ -32,7 +32,7 @@ class EmployeeController extends Controller
             'department_id' => 'nullable|exists:departments,id',
             'title'         => 'nullable|string|max:255',
             'phone'         => 'nullable|string|max:30',
-            'status'        => 'nullable|in:Active,Probation,Exiting',
+            'status'        => 'nullable|in:Active,Probation,Exiting,Inactive',
             'joined_at'     => 'nullable|date',
         ]);
 
@@ -87,7 +87,7 @@ class EmployeeController extends Controller
             'title'         => 'nullable|string|max:255',
             'phone'         => 'nullable|string|max:30',
             'location'      => 'nullable|string|max:255',
-            'status'        => 'nullable|in:Active,Probation,Exiting',
+            'status'        => 'nullable|in:Active,Probation,Exiting,Inactive',
         ]);
 
         $employee->update(array_filter(['name' => $data['name'] ?? null, 'email' => $data['email'] ?? null]));

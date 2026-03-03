@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { HRLayout } from "@/components/HRLayout";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Filter, Plus, Mail, Phone, Edit2, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -16,8 +17,9 @@ import {
   type Employee,
 } from "@/hooks/api/useEmployees";
 import { useDepartments } from "@/hooks/api/useDepartments";
+import { useStations } from "@/hooks/api/useStations";
 
-const emptyForm = { name: "", role: "", dept: "", status: "Active", email: "", phone: "" };
+const emptyForm = { name: "", role: "", dept: "", station: "", status: "Active", active: true, email: "", phone: "" };
 
 const Employees = () => {
   const [search, setSearch] = useState("");
@@ -28,9 +30,22 @@ const Employees = () => {
 
   const { data: employees = [], isLoading } = useEmployees(search || undefined);
   const { data: departments = [] } = useDepartments();
+  const { data: stations = [] } = useStations();
   const createEmp   = useCreateEmployee();
   const updateEmp   = useUpdateEmployee();
   const deleteEmp   = useDeleteEmployee();
+
+  // Parse positions from selected department
+  const availableRoles = useMemo(() => {
+    const dept = departments.find((d) => d.name === form.dept);
+    if (!dept || !dept.positions) return [];
+    return dept.positions.split(",").map((p) => p.trim()).filter(Boolean);
+  }, [form.dept, departments]);
+
+  const selectedDeptStation = useMemo(() => {
+    const dept = departments.find((d) => d.name === form.dept);
+    return dept?.station_id ? String(dept.station_id) : null;
+  }, [form.dept, departments]);
 
   const openAdd = () => {
     setEditingId(null);
@@ -40,7 +55,16 @@ const Employees = () => {
 
   const openEdit = (emp: Employee) => {
     setEditingId(emp.id);
-    setForm({ name: emp.name, role: emp.role ?? "", dept: emp.dept, status: emp.status, email: emp.email, phone: emp.phone ?? "" });
+    setForm({
+      name: emp.name,
+      role: emp.role ?? "",
+      dept: emp.dept,
+      station: "", // Will be auto-filled from department
+      status: emp.status,
+      active: emp.status === "Active" || emp.status === "Probation",
+      email: emp.email,
+      phone: emp.phone ?? "",
+    });
     setDialogOpen(true);
   };
 
@@ -57,7 +81,7 @@ const Employees = () => {
       name:          form.name,
       email:         form.email,
       title:         form.role,
-      status:        form.status,
+      status:        form.active ? form.status : "Inactive",
       phone:         form.phone,
       department_id: dept?.id,
     };
@@ -159,6 +183,7 @@ const Employees = () => {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{editingId !== null ? "Edit Employee" : "Add Employee"}</DialogTitle>
+            <DialogDescription>Fill in the employee details below.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-4">
@@ -167,22 +192,57 @@ const Employees = () => {
                 <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>Role / Title *</Label>
-                <Input value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} />
+                <Label>Email *</Label>
+                <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
               </div>
             </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Department *</Label>
-                <Select value={form.dept} onValueChange={(v) => setForm({ ...form, dept: v })}>
+                <Select value={form.dept} onValueChange={(v) => setForm({ ...form, dept: v, role: "" })}>
                   <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
                   <SelectContent>
-                    {departments.map((d) => (
+                    {departments.filter(d => d.active).map((d) => (
                       <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label>Role / Title *</Label>
+                {availableRoles.length > 0 ? (
+                  <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
+                    <SelectContent>
+                      {availableRoles.map((role) => (
+                        <SelectItem key={role} value={role}>{role}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="Enter role/title" />
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Station</Label>
+                <Input
+                  value={selectedDeptStation ? stations.find(s => s.id === Number(selectedDeptStation))?.name || "—" : "—"}
+                  disabled
+                  className="bg-muted"
+                />
+                <p className="text-xs text-muted-foreground">Auto-assigned from department</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Phone</Label>
+                <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Status</Label>
                 <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
@@ -191,18 +251,16 @@ const Employees = () => {
                     <SelectItem value="Active">Active</SelectItem>
                     <SelectItem value="Probation">Probation</SelectItem>
                     <SelectItem value="Exiting">Exiting</SelectItem>
+                    <SelectItem value="Inactive">Inactive</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Email *</Label>
-                <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Phone</Label>
-                <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                <Label>Active</Label>
+                <div className="flex items-center h-10">
+                  <Switch checked={form.active} onCheckedChange={(checked) => setForm({ ...form, active: checked })} />
+                  <span className="ml-2 text-sm text-muted-foreground">{form.active ? "Yes" : "No"}</span>
+                </div>
               </div>
             </div>
           </div>
