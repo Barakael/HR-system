@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import api from "@/components/api/axios";
 
 export type UserRole = "hr_admin" | "employee";
 
@@ -12,71 +13,88 @@ export interface AuthUser {
   email: string;
 }
 
-export const MOCK_USERS: AuthUser[] = [
-  {
-    id: 1,
-    name: "Jane Cooper",
-    role: "hr_admin",
-    department: "Human Resources",
-    avatar: "JC",
-    title: "HR Manager",
-    email: "jane.cooper@hrportal.com",
-  },
-  {
-    id: 2,
-    name: "John Doe",
-    role: "employee",
-    department: "Engineering",
-    avatar: "JD",
-    title: "Software Engineer",
-    email: "john.doe@hrportal.com",
-  },
-];
-
 interface AuthContextValue {
   currentUser: AuthUser | null;
-  login: (userId: number) => void;
-  logout: () => void;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
   isHRAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue>({
   currentUser: null,
-  login: () => {},
-  logout: () => {},
+  loading: true,
+  login: async () => {},
+  logout: async () => {},
   isHRAdmin: false,
 });
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
-    const stored = sessionStorage.getItem("hr-auth-user");
-    if (stored) {
-      try {
-        return JSON.parse(stored) as AuthUser;
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
+function mapUser(raw: Record<string, unknown>): AuthUser {
+  const profile = (raw.profile as Record<string, unknown>) ?? {};
+  const dept    = (profile.department as Record<string, unknown>) ?? {};
+  const role    = (raw.role as string) ?? "employee";
+  return {
+    id:         raw.id as number,
+    name:       raw.name as string,
+    email:      raw.email as string,
+    role:       (role === "hr_admin" ? "hr_admin" : "employee") as UserRole,
+    title:      (profile.title as string) ?? "",
+    department: (dept.name as string) ?? "",
+    avatar:     ((raw.name as string) ?? "?")
+      .split(" ")
+      .map((n: string) => n[0])
+      .join("")
+      .toUpperCase(),
+  };
+}
 
-  const login = (userId: number) => {
-    const user = MOCK_USERS.find((u) => u.id === userId) ?? null;
-    setCurrentUser(user);
-    if (user) {
-      sessionStorage.setItem("hr-auth-user", JSON.stringify(user));
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Rehydrate session on mount if a token exists
+  useEffect(() => {
+    const token = localStorage.getItem("auth_token");
+    if (!token) {
+      setLoading(false);
+      return;
     }
+    api
+      .get<{ user: Record<string, unknown>; role?: string }>("/api/auth/me")
+      .then(({ data }) => {
+        const raw = { ...data.user, role: data.role ?? (data.user.role as string) };
+        setCurrentUser(mapUser(raw));
+      })
+      .catch(() => {
+        localStorage.removeItem("auth_token");
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const login = async (email: string, password: string): Promise<void> => {
+    const { data } = await api.post<{
+      token: string;
+      user: Record<string, unknown>;
+      role: string;
+    }>("/api/auth/login", { email, password });
+
+    localStorage.setItem("auth_token", data.token);
+    setCurrentUser(mapUser({ ...data.user, role: data.role }));
   };
 
-  const logout = () => {
-    setCurrentUser(null);
-    sessionStorage.removeItem("hr-auth-user");
+  const logout = async (): Promise<void> => {
+    try {
+      await api.post("/api/auth/logout");
+    } finally {
+      localStorage.removeItem("auth_token");
+      setCurrentUser(null);
+    }
   };
 
   const isHRAdmin = currentUser?.role === "hr_admin";
 
   return (
-    <AuthContext.Provider value={{ currentUser, login, logout, isHRAdmin }}>
+    <AuthContext.Provider value={{ currentUser, loading, login, logout, isHRAdmin }}>
       {children}
     </AuthContext.Provider>
   );
@@ -85,3 +103,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function useAuth() {
   return useContext(AuthContext);
 }
+
