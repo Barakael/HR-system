@@ -4,10 +4,15 @@ import api from "@/components/api/axios";
 export interface Department {
   id: number;
   name: string;
+  code?: string;
   description?: string;
+  positions?: string;
+  station?: string;
+  station_id?: number;
+  active?: boolean;
+  head?: string;
   head_user_id?: number;
-  head?: { id: number; name: string };
-  profiles_count?: number;
+  employees?: number;
 }
 
 export function useDepartments() {
