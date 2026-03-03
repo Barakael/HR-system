@@ -7,36 +7,19 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, GraduationCap, Users, Clock } from "lucide-react";
+import { Plus, GraduationCap, Users, Clock, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-interface TrainingProgram {
-  id: string;
-  title: string;
-  category: string;
-  instructor: string;
-  duration: string;
-  enrolled: number;
-  status: string;
-  description: string;
-}
-
-const initialPrograms: TrainingProgram[] = [
-  { id: "1", title: "Workplace Safety Fundamentals", category: "Compliance", instructor: "Dr. Anne White", duration: "2 hours", enrolled: 48, status: "Active", description: "Mandatory workplace safety training" },
-  { id: "2", title: "Data Privacy & GDPR", category: "Compliance", instructor: "Mark Taylor", duration: "3 hours", enrolled: 35, status: "Active", description: "Data protection regulations training" },
-  { id: "3", title: "Leadership Skills Workshop", category: "Development", instructor: "Jane Foster", duration: "5 hours", enrolled: 20, status: "Active", description: "For aspiring team leads and managers" },
-  { id: "4", title: "Effective Communication", category: "Soft Skills", instructor: "Dr. Lisa Park", duration: "2.5 hours", enrolled: 60, status: "Draft", description: "Improve workplace communication" },
-  { id: "5", title: "Project Management Basics", category: "Professional", instructor: "Tom Harris", duration: "4 hours", enrolled: 0, status: "Draft", description: "PM fundamentals with Agile & Scrum" },
-];
+import { useTrainingPrograms, useCreateTraining } from "@/hooks/api/useTraining";
 
 const Training = () => {
-  const [programs, setPrograms] = useState<TrainingProgram[]>(initialPrograms);
+  const { data: programs = [], isLoading } = useTrainingPrograms();
+  const createTraining = useCreateTraining();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ id: "", title: "", category: "Compliance", instructor: "", duration: "", enrolled: 0, status: "Draft", description: "" });
+  const [form, setForm] = useState({ title: "", category: "Compliance", instructor: "", duration: "", description: "" });
   const { toast } = useToast();
 
   const openAdd = () => {
-    setForm({ id: crypto.randomUUID(), title: "", category: "Compliance", instructor: "", duration: "", enrolled: 0, status: "Draft", description: "" });
+    setForm({ title: "", category: "Compliance", instructor: "", duration: "", description: "" });
     setDialogOpen(true);
   };
 
@@ -45,9 +28,13 @@ const Training = () => {
       toast({ title: "Please fill required fields", variant: "destructive" });
       return;
     }
-    setPrograms((prev) => [...prev, form]);
-    toast({ title: "Training program added" });
-    setDialogOpen(false);
+    createTraining.mutate(form, {
+      onSuccess: () => {
+        toast({ title: "Training program added" });
+        setDialogOpen(false);
+      },
+      onError: () => toast({ title: "Failed to add training program", variant: "destructive" }),
+    });
   };
 
   return (
@@ -71,7 +58,7 @@ const Training = () => {
         <div className="bg-card rounded-lg border border-border p-5 shadow-sm flex items-center gap-4">
           <div className="p-2.5 rounded-lg bg-info/10"><Users className="h-5 w-5 text-info" /></div>
           <div>
-            <p className="text-2xl font-bold text-card-foreground">{programs.reduce((s, p) => s + p.enrolled, 0)}</p>
+            <p className="text-2xl font-bold text-card-foreground">{programs.reduce((s, p) => s + (p.enrollments_count ?? 0), 0)}</p>
             <p className="text-sm text-muted-foreground">Total Enrollments</p>
           </div>
         </div>
@@ -84,6 +71,9 @@ const Training = () => {
         </div>
       </div>
 
+      {isLoading ? (
+        <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+      ) : (
       <div className="space-y-4">
         {programs.map((prog) => (
           <div key={prog.id} className="bg-card rounded-lg border border-border p-5 shadow-sm hover:shadow-md transition-shadow">
@@ -99,11 +89,12 @@ const Training = () => {
             </div>
             <p className="text-sm text-muted-foreground mt-2">{prog.description}</p>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
-              <Users className="h-3.5 w-3.5" /> {prog.enrolled} enrolled
+              <Users className="h-3.5 w-3.5" /> {prog.enrollments_count ?? 0} enrolled
             </div>
           </div>
         ))}
       </div>
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
@@ -142,7 +133,10 @@ const Training = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>Add Program</Button>
+            <Button onClick={handleSave} disabled={createTraining.isPending}>
+              {createTraining.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Add Program
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
