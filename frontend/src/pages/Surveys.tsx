@@ -7,61 +7,25 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, ClipboardList, Trash2, GripVertical, Eye } from "lucide-react";
+import { Plus, ClipboardList, Trash2, GripVertical, Eye, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useSurveys, useCreateSurvey, useDeleteSurvey, type Survey, type SurveyQuestion } from "@/hooks/api/useSurveys";
 
-interface Question {
-  id: string;
+type QuestionDraft = {
   text: string;
-  type: "text" | "rating" | "multiple_choice" | "yes_no";
-  options?: string[];
-}
-
-interface Survey {
-  id: string;
-  title: string;
-  description: string;
-  questions: Question[];
-  responses: number;
-  status: string;
-  createdDate: string;
-}
-
-const initialSurveys: Survey[] = [
-  {
-    id: "1", title: "Employee Satisfaction Q1 2026", description: "Quarterly engagement survey",
-    questions: [
-      { id: "q1", text: "How satisfied are you with your work environment?", type: "rating" },
-      { id: "q2", text: "Do you feel valued by your manager?", type: "yes_no" },
-      { id: "q3", text: "What improvements would you suggest?", type: "text" },
-    ],
-    responses: 142, status: "Active", createdDate: "Feb 1, 2026",
-  },
-  {
-    id: "2", title: "Remote Work Preferences", description: "Survey on hybrid work policy",
-    questions: [
-      { id: "q1", text: "How many days would you prefer to work from home?", type: "multiple_choice", options: ["1", "2", "3", "4", "5"] },
-      { id: "q2", text: "Rate your home office setup", type: "rating" },
-    ],
-    responses: 89, status: "Closed", createdDate: "Jan 10, 2026",
-  },
-  {
-    id: "3", title: "Benefits Feedback", description: "Annual benefits satisfaction survey",
-    questions: [
-      { id: "q1", text: "Rate your health insurance plan", type: "rating" },
-      { id: "q2", text: "Would you use a gym membership benefit?", type: "yes_no" },
-    ],
-    responses: 0, status: "Draft", createdDate: "Feb 25, 2026",
-  },
-];
+  type: SurveyQuestion["type"];
+  options?: string;
+};
 
 const Surveys = () => {
-  const [surveys, setSurveys] = useState<Survey[]>(initialSurveys);
+  const { data: surveys = [], isLoading } = useSurveys();
+  const createSurvey = useCreateSurvey();
+  const deleteSurvey = useDeleteSurvey();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [viewSurvey, setViewSurvey] = useState<Survey | null>(null);
   const [form, setForm] = useState({ title: "", description: "" });
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [newQ, setNewQ] = useState({ text: "", type: "text" as Question["type"], options: "" });
+  const [questions, setQuestions] = useState<QuestionDraft[]>([]);
+  const [newQ, setNewQ] = useState<QuestionDraft>({ text: "", type: "text", options: "" });
   const { toast } = useToast();
 
   const openAdd = () => {
@@ -72,35 +36,35 @@ const Surveys = () => {
 
   const addQuestion = () => {
     if (!newQ.text) return;
-    const q: Question = {
-      id: crypto.randomUUID(),
-      text: newQ.text,
-      type: newQ.type,
-      ...(newQ.type === "multiple_choice" && newQ.options ? { options: newQ.options.split(",").map((o) => o.trim()) } : {}),
-    };
-    setQuestions((prev) => [...prev, q]);
+    setQuestions((prev) => [...prev, { ...newQ }]);
     setNewQ({ text: "", type: "text", options: "" });
   };
 
-  const removeQuestion = (id: string) => setQuestions((prev) => prev.filter((q) => q.id !== id));
+  const removeQuestion = (i: number) => setQuestions((prev) => prev.filter((_, idx) => idx !== i));
 
   const handleSave = () => {
     if (!form.title || questions.length === 0) {
       toast({ title: "Add a title and at least one question", variant: "destructive" });
       return;
     }
-    const survey: Survey = {
-      id: crypto.randomUUID(),
+    createSurvey.mutate({
       title: form.title,
       description: form.description,
-      questions,
-      responses: 0,
-      status: "Draft",
-      createdDate: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-    };
-    setSurveys((prev) => [...prev, survey]);
-    toast({ title: "Survey created" });
-    setDialogOpen(false);
+      questions: questions.map((q) => ({ text: q.text, type: q.type, options: q.options })),
+    }, {
+      onSuccess: () => {
+        toast({ title: "Survey created" });
+        setDialogOpen(false);
+      },
+      onError: () => toast({ title: "Failed to create survey", variant: "destructive" }),
+    });
+  };
+
+  const handleDelete = (id: number) => {
+    deleteSurvey.mutate(id, {
+      onSuccess: () => toast({ title: "Survey deleted" }),
+      onError: () => toast({ title: "Failed to delete survey", variant: "destructive" }),
+    });
   };
 
   const typeLabel = (t: string) => {
@@ -118,29 +82,38 @@ const Surveys = () => {
         </Button>
       }
     >
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {surveys.map((survey) => (
-          <div key={survey.id} className="bg-card rounded-lg border border-border p-5 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-secondary"><ClipboardList className="h-4 w-4 text-muted-foreground" /></div>
-                <div>
-                  <p className="font-medium text-card-foreground">{survey.title}</p>
-                  <p className="text-xs text-muted-foreground">{survey.createdDate}</p>
+      {isLoading ? (
+        <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {surveys.map((survey) => (
+            <div key={survey.id} className="bg-card rounded-lg border border-border p-5 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-secondary"><ClipboardList className="h-4 w-4 text-muted-foreground" /></div>
+                  <div>
+                    <p className="font-medium text-card-foreground">{survey.title}</p>
+                    <p className="text-xs text-muted-foreground">{survey.created_at}</p>
+                  </div>
+                </div>
+                <StatusBadge label={survey.status} variant={survey.status === "Active" ? "success" : survey.status === "Closed" ? "default" : "warning"} />
+              </div>
+              <p className="text-sm text-muted-foreground mb-3">{survey.description}</p>
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{survey.questions.length} questions · {survey.responses_count} responses</span>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => setViewSurvey(survey)}>
+                    <Eye className="h-3.5 w-3.5 mr-1" /> View
+                  </Button>
+                  <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDelete(survey.id)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
               </div>
-              <StatusBadge label={survey.status} variant={survey.status === "Active" ? "success" : survey.status === "Closed" ? "default" : "warning"} />
             </div>
-            <p className="text-sm text-muted-foreground mb-3">{survey.description}</p>
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{survey.questions.length} questions · {survey.responses} responses</span>
-              <Button variant="ghost" size="sm" onClick={() => setViewSurvey(survey)}>
-                <Eye className="h-3.5 w-3.5 mr-1" /> View
-              </Button>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Create Survey Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -160,13 +133,13 @@ const Surveys = () => {
               <Label className="text-base font-semibold">Questions ({questions.length})</Label>
               <div className="space-y-2 mt-2">
                 {questions.map((q, i) => (
-                  <div key={q.id} className="flex items-center gap-2 bg-secondary/50 rounded-md px-3 py-2">
+                  <div key={i} className="flex items-center gap-2 bg-secondary/50 rounded-md px-3 py-2">
                     <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
                     <div className="flex-1">
                       <p className="text-sm text-card-foreground">{i + 1}. {q.text}</p>
-                      <p className="text-xs text-muted-foreground">{typeLabel(q.type)}{q.options ? ` — ${q.options.join(", ")}` : ""}</p>
+                      <p className="text-xs text-muted-foreground">{typeLabel(q.type)}{q.options ? ` — ${q.options}` : ""}</p>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeQuestion(q.id)}>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeQuestion(i)}>
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
@@ -176,7 +149,7 @@ const Surveys = () => {
               <div className="mt-3 p-3 border border-dashed border-border rounded-md space-y-3">
                 <Input placeholder="Question text..." value={newQ.text} onChange={(e) => setNewQ({ ...newQ, text: e.target.value })} />
                 <div className="grid grid-cols-2 gap-3">
-                  <Select value={newQ.type} onValueChange={(v) => setNewQ({ ...newQ, type: v as Question["type"] })}>
+                  <Select value={newQ.type} onValueChange={(v) => setNewQ({ ...newQ, type: v as SurveyQuestion["type"] })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="text">Free Text</SelectItem>
@@ -188,14 +161,17 @@ const Surveys = () => {
                   <Button variant="outline" size="sm" onClick={addQuestion}>+ Add Question</Button>
                 </div>
                 {newQ.type === "multiple_choice" && (
-                  <Input placeholder="Options (comma-separated)" value={newQ.options} onChange={(e) => setNewQ({ ...newQ, options: e.target.value })} />
+                  <Input placeholder="Options (comma-separated)" value={newQ.options ?? ""} onChange={(e) => setNewQ({ ...newQ, options: e.target.value })} />
                 )}
               </div>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>Create Survey</Button>
+            <Button onClick={handleSave} disabled={createSurvey.isPending}>
+              {createSurvey.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Create Survey
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -209,7 +185,7 @@ const Surveys = () => {
             {viewSurvey?.questions.map((q, i) => (
               <div key={q.id} className="bg-secondary/50 rounded-md px-4 py-3">
                 <p className="text-sm font-medium text-card-foreground">{i + 1}. {q.text}</p>
-                <p className="text-xs text-muted-foreground mt-1">{typeLabel(q.type)}{q.options ? `: ${q.options.join(", ")}` : ""}</p>
+                <p className="text-xs text-muted-foreground mt-1">{typeLabel(q.type)}{q.options ? `: ${q.options}` : ""}</p>
               </div>
             ))}
           </div>
