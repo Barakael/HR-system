@@ -19,14 +19,21 @@ class HRSeeder extends Seeder
 
         // ── Departments ───────────────────────────────────────────────────────
         $departments = collect([
-            'Engineering',
-            'Human Resources',
-            'Marketing',
-            'Finance',
-            'Operations',
-            'Product',
-        ])->mapWithKeys(fn ($name) => [
-            $name => Department::firstOrCreate(['name' => $name], ['description' => "{$name} department"]),
+            ['name' => 'Engineering',      'code' => 'ENG'],
+            ['name' => 'Human Resources',  'code' => 'HR'],
+            ['name' => 'Marketing',        'code' => 'MKT'],
+            ['name' => 'Finance',          'code' => 'FIN'],
+            ['name' => 'Operations',       'code' => 'OPS'],
+            ['name' => 'Product',          'code' => 'PRD'],
+        ])->mapWithKeys(fn ($dept) => [
+            $dept['name'] => Department::firstOrCreate(
+                ['name' => $dept['name']],
+                [
+                    'code'        => $dept['code'],
+                    'description' => "{$dept['name']} department",
+                    'active'      => true,
+                ]
+            ),
         ]);
 
         // ── HR Admin ──────────────────────────────────────────────────────────
