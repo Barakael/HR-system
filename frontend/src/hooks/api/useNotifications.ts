@@ -8,6 +8,7 @@ export interface NotificationItem {
   priority: string;
   published_at: string;
   excerpt: string;
+  is_read: boolean;
 }
 
 export function useUnreadNotifications() {

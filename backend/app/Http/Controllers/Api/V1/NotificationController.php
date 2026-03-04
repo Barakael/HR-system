@@ -18,29 +18,28 @@ class NotificationController extends Controller
         $user = $request->user();
         $userId = $user->id;
 
-        // Get published policies visible to this user that are unread
+        // Get the last 3 published policies visible to this user (read or unread)
         $policies = Policy::visibleTo($userId)
             ->latest('published_at')
+            ->take(3)
             ->get();
 
-        // Filter to only unread
         $readPolicyIds = PolicyRecipient::where('user_id', $userId)
             ->whereNotNull('read_at')
             ->pluck('policy_id')
             ->toArray();
 
-        $unread = $policies->filter(fn ($p) => !in_array($p->id, $readPolicyIds))
-            ->values()
-            ->map(fn ($p) => [
-                'id'           => $p->id,
-                'title'        => $p->title,
-                'type'         => $p->type,
-                'priority'     => $p->priority,
-                'published_at' => $p->published_at?->toDateTimeString(),
-                'excerpt'      => \Illuminate\Support\Str::limit(strip_tags($p->content), 100),
-            ]);
+        $items = $policies->values()->map(fn ($p) => [
+            'id'           => $p->id,
+            'title'        => $p->title,
+            'type'         => $p->type,
+            'priority'     => $p->priority,
+            'published_at' => $p->published_at?->toDateTimeString(),
+            'excerpt'      => \Illuminate\Support\Str::limit(strip_tags($p->content), 100),
+            'is_read'      => in_array($p->id, $readPolicyIds),
+        ]);
 
-        return response()->json($unread);
+        return response()->json($items);
     }
 
     /**

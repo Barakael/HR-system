@@ -69,20 +69,21 @@ export function HRLayout({ children, title, subtitle, actions }: HRLayoutProps) 
                   </div>
                   <div className="max-h-72 overflow-y-auto">
                     {notifications.length === 0 ? (
-                      <div className="p-4 text-center text-sm text-muted-foreground">All caught up!</div>
+                      <div className="p-4 text-center text-sm text-muted-foreground">No notifications yet.</div>
                     ) : (
                       notifications.map((n) => (
                         <button
                           key={n.id}
-                          className="w-full text-left px-4 py-3 hover:bg-muted/50 border-b border-border last:border-0 transition-colors"
+                          className={`w-full text-left px-4 py-3 hover:bg-muted/50 border-b border-border last:border-0 transition-colors ${n.is_read ? "opacity-70" : ""}`}
                           onClick={() => handleNotifClick(n.id)}
                         >
                           <div className="flex items-center gap-2">
-                            <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
-                            <p className="text-sm font-medium text-card-foreground truncate">{n.title}</p>
+                            <span className={`h-2 w-2 rounded-full shrink-0 ${n.is_read ? "bg-muted-foreground/40" : "bg-blue-500"}`} />
+                            <p className={`text-sm font-medium text-card-foreground truncate ${n.is_read ? "font-normal" : ""}`}>{n.title}</p>
                           </div>
                           <div className="flex items-center gap-2 mt-1 ml-4">
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">{n.type}</span>
+                            {!n.is_read && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">New</span>}
                             <span className="text-[10px] text-muted-foreground">{n.time_ago}</span>
                           </div>
                           {n.excerpt && <p className="text-xs text-muted-foreground mt-1 ml-4 line-clamp-1">{n.excerpt}</p>}
