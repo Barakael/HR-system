@@ -34,6 +34,7 @@ import {
   ShieldCheck,
   Video,
   ScrollText,
+  Package,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -103,7 +104,10 @@ const hrAdminSections: NavSection[] = [
   },
   {
     label: "System",
-    items: [{ title: "Help Desk", url: "/help-desk", icon: Headphones }],
+    items: [
+      { title: "Assets", url: "/assets", icon: Package },
+      { title: "Help Desk", url: "/help-desk", icon: Headphones },
+    ],
   },
   {
     label: "Communication",
