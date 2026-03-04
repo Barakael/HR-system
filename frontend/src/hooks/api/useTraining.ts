@@ -10,6 +10,13 @@ export interface TrainingProgram {
   status: string;
   description?: string;
   enrollments_count: number;
+  venue?: string;
+  start_date?: string;
+  end_date?: string;
+  start_time?: string;
+  end_time?: string;
+  mode?: string;
+  max_capacity?: number;
 }
 
 export interface TrainingEnrollment {
@@ -31,7 +38,14 @@ function mapProgram(raw: Record<string, unknown>): TrainingProgram {
     duration:          (raw.duration as string) ?? "",
     status:            (raw.status as string) ?? "Active",
     description:       raw.description as string,
-    enrollments_count: (raw.enrollments_count as number) ?? 0,
+    enrollments_count: (raw.enrollments_count as number) ?? (raw.enrolled as number) ?? 0,
+    venue:             (raw.venue as string) ?? "",
+    start_date:        (raw.start_date as string) ?? "",
+    end_date:          (raw.end_date as string) ?? "",
+    start_time:        (raw.start_time as string) ?? "",
+    end_time:          (raw.end_time as string) ?? "",
+    mode:              (raw.mode as string) ?? "Offline",
+    max_capacity:      (raw.max_capacity as number) ?? undefined,
   };
 }
 
@@ -96,6 +110,15 @@ export function useEnroll() {
   return useMutation({
     mutationFn: (trainingId: number) =>
       api.post(`/api/v1/training/${trainingId}/enroll`).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["training"] }),
+  });
+}
+
+export function useAssignTrainees() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ trainingId, user_ids }: { trainingId: number; user_ids: number[] }) =>
+      api.post(`/api/v1/training/${trainingId}/assign-trainees`, { user_ids }).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["training"] }),
   });
 }
