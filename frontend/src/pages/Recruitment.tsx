@@ -14,14 +14,18 @@ import { useToast } from "@/hooks/use-toast";
 import { useJobs, useCreateJob } from "@/hooks/api/useJobs";
 import { useJobInterviews, useCreateInterview, useInterviewDetail, InterviewSummary } from "@/hooks/api/useInterviews";
 import { useEmployees } from "@/hooks/api/useEmployees";
+import { useDepartments } from "@/hooks/api/useDepartments";
+import { useStations } from "@/hooks/api/useStations";
 
 const Recruitment = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ title: "", department: "", location: "", type: "Full-time", description: "" });
+  const [form, setForm] = useState({ title: "", department_id: "", location: "", type: "Full-time", description: "" });
   const { toast } = useToast();
 
   const { data: jobs = [], isLoading } = useJobs();
   const { data: employees = [] } = useEmployees();
+  const { data: departments = [] } = useDepartments();
+  const { data: stations = [] } = useStations();
   const createJob = useCreateJob();
 
   // Interview state
@@ -41,17 +45,29 @@ const Recruitment = () => {
   ]);
 
   const openAdd = () => {
-    setForm({ title: "", department: "", location: "", type: "Full-time", description: "" });
+    setForm({ title: "", department_id: "", location: "", type: "Full-time", description: "" });
     setDialogOpen(true);
   };
 
+  // Derive positions (roles) from selected department
+  const selectedDept = departments.find((d) => d.id === Number(form.department_id));
+  const deptPositions: string[] = selectedDept?.positions
+    ? selectedDept.positions.split(",").map((p) => p.trim()).filter(Boolean)
+    : [];
+
   const handleSave = async () => {
-    if (!form.title || !form.department) {
+    if (!form.title || !form.department_id) {
       toast({ title: "Please fill required fields", variant: "destructive" });
       return;
     }
     try {
-      await createJob.mutateAsync(form);
+      await createJob.mutateAsync({
+        title: form.title,
+        department_id: Number(form.department_id),
+        location: form.location,
+        type: form.type,
+        description: form.description,
+      });
       toast({ title: "Job posting created" });
       setDialogOpen(false);
     } catch { toast({ title: "Failed to create job posting", variant: "destructive" }); }
@@ -151,8 +167,8 @@ const Recruitment = () => {
                       <div>
                         <p className="font-medium text-card-foreground">{job.title}</p>
                         <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                          <span className="flex items-center gap-1"><Briefcase className="h-3 w-3" /> {job.department}</span>
-                          <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {job.location}</span>
+                          <span className="flex items-center gap-1"><Briefcase className="h-3 w-3" /> {job.department || "—"}</span>
+                          <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {job.location || job.station || "—"}</span>
                           <span>{job.type}</span>
                           {job.posted_at && <span>Posted {new Date(job.posted_at).toLocaleDateString()}</span>}
                         </div>
@@ -315,10 +331,45 @@ const Recruitment = () => {
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>Post New Job</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="space-y-2"><Label>Job Title *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>Department *</Label><Input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} /></div>
-              <div className="space-y-2"><Label>Location</Label><Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} /></div>
+            <div className="space-y-2">
+              <Label>Department *</Label>
+              <Select value={form.department_id} onValueChange={(v) => setForm({ ...form, department_id: v, title: "" })}>
+                <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
+                <SelectContent>
+                  {departments.filter((d) => d.active !== false).map((d) => (
+                    <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Job Title / Role *</Label>
+              {deptPositions.length > 0 ? (
+                <Select value={form.title} onValueChange={(v) => setForm({ ...form, title: v })}>
+                  <SelectTrigger><SelectValue placeholder="Select role from department" /></SelectTrigger>
+                  <SelectContent>
+                    {deptPositions.map((pos) => (
+                      <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder={form.department_id ? "No roles defined — type a title" : "Select department first"} />
+              )}
+              {form.department_id && deptPositions.length === 0 && (
+                <p className="text-xs text-muted-foreground">No positions defined for this department. You can type a custom title above.</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Location / Station</Label>
+              <Select value={form.location} onValueChange={(v) => setForm({ ...form, location: v })}>
+                <SelectTrigger><SelectValue placeholder="Select station" /></SelectTrigger>
+                <SelectContent>
+                  {stations.filter((s) => s.active !== false).map((s) => (
+                    <SelectItem key={s.id} value={s.name}>{s.name}{s.location ? ` — ${s.location}` : ""}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Employment Type</Label>

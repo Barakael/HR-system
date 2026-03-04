@@ -70,7 +70,7 @@ export function AiChatWidget() {
         id: Date.now() + 1,
         conversation_id: conversationId ?? 0,
         role: "assistant",
-        content: "Sorry, something went wrong. Please try again.",
+        content: "Sorry, I am comming Comming soon!!",
         sql_query: null,
         created_at: new Date().toISOString(),
       };

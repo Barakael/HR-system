@@ -4,7 +4,9 @@ import api from "@/components/api/axios";
 export interface Job {
   id: number;
   title: string;
+  department_id: number | null;
   department: string;
+  station: string;
   location: string;
   type: string;
   status: string;
@@ -14,17 +16,18 @@ export interface Job {
 }
 
 function mapJob(raw: Record<string, unknown>): Job {
-  const dept = (raw.department as Record<string, unknown>) ?? {};
   return {
-    id:          raw.id as number,
-    title:       raw.title as string,
-    department:  (dept.name as string) ?? "",
-    location:    (raw.location as string) ?? "",
-    type:        (raw.type as string) ?? "",
-    status:      (raw.status as string) ?? "Open",
-    applicants:  (raw.applicants as number) ?? 0,
-    posted_at:   raw.posted_at as string,
-    description: raw.description as string,
+    id:            raw.id as number,
+    title:         raw.title as string,
+    department_id: (raw.department_id as number) ?? null,
+    department:    (raw.department_name as string) ?? "",
+    station:       (raw.station_name as string) ?? "",
+    location:      (raw.location as string) ?? "",
+    type:          (raw.type as string) ?? "",
+    status:        (raw.status as string) ?? "Open",
+    applicants:    (raw.applicants as number) ?? 0,
+    posted_at:     raw.posted_at as string,
+    description:   raw.description as string,
   };
 }
 
