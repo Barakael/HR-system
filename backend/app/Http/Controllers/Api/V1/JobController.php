@@ -12,7 +12,7 @@ class JobController extends Controller
 {
     public function index(): JsonResponse
     {
-        $jobs = HrJob::with('department')->latest()->paginate(20);
+        $jobs = HrJob::with('department.station')->latest()->paginate(20);
         return response()->json(JobResource::collection($jobs)->response()->getData(true));
     }
 
@@ -27,8 +27,11 @@ class JobController extends Controller
             'description'   => 'nullable|string',
         ]);
 
-        $job = HrJob::create(array_merge($data, ['created_by' => $request->user()->id]));
-        return response()->json(new JobResource($job->load('department')), 201);
+        $job = HrJob::create(array_merge($data, [
+            'created_by' => $request->user()->id,
+            'posted_at'  => now(),
+        ]));
+        return response()->json(new JobResource($job->load('department.station')), 201);
     }
 
     public function update(Request $request, HrJob $job): JsonResponse
