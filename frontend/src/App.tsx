@@ -27,6 +27,9 @@ import Onboarding from "./pages/Onboarding";
 import HelpDesk from "./pages/HelpDesk";
 import Attendance from "./pages/Attendance";
 import Stations from "./pages/Stations";
+import BankTax from "./pages/BankTax";
+import MyInterviews from "./pages/MyInterviews";
+import Policies from "./pages/Policies";
 import { PlaceholderPage } from "./components/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 import {
@@ -61,7 +64,9 @@ const App = () => (
           <Route path="/transfers" element={<ProtectedRoute role="hr_admin"><Transfers /></ProtectedRoute>} />
           <Route path="/exit" element={<ProtectedRoute role="hr_admin"><ExitManagement /></ProtectedRoute>} />
           <Route path="/payslips" element={<ProtectedRoute><Payslips /></ProtectedRoute>} />
-          <Route path="/bank-tax" element={<ProtectedRoute role="hr_admin"><PlaceholderPage title="Bank & Tax" subtitle="Manage banking and tax information" icon={Landmark} /></ProtectedRoute>} />
+          <Route path="/bank-tax" element={<ProtectedRoute role="hr_admin"><BankTax /></ProtectedRoute>} />
+          <Route path="/my-interviews" element={<ProtectedRoute><MyInterviews /></ProtectedRoute>} />
+          <Route path="/policies" element={<ProtectedRoute><Policies /></ProtectedRoute>} />
           <Route path="/leave" element={<ProtectedRoute><LeaveManagement /></ProtectedRoute>} />
           <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
           <Route path="/approvals" element={<ProtectedRoute role="hr_admin"><Approvals /></ProtectedRoute>} />

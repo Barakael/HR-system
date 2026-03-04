@@ -18,6 +18,11 @@ use App\Http\Controllers\Api\V1\SurveyController;
 use App\Http\Controllers\Api\V1\TicketController;
 use App\Http\Controllers\Api\V1\TrainingController;
 use App\Http\Controllers\Api\V1\TransferController;
+use App\Http\Controllers\Api\V1\BankTaxDetailController;
+use App\Http\Controllers\Api\V1\InterviewController;
+use App\Http\Controllers\Api\V1\PolicyController;
+use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\AiChatController;
 
 // ── Public ────────────────────────────────────────────────────────────────────
 Route::post('/auth/login', [AuthController::class, 'login']);
@@ -59,6 +64,15 @@ Route::middleware('auth:sanctum')->group(function () {
         // Jobs / Recruitment
         Route::apiResource('jobs', JobController::class);
 
+        // Interviews
+        Route::get('/jobs/{job}/interviews',                                      [InterviewController::class, 'index']);
+        Route::post('/jobs/{job}/interviews',                                     [InterviewController::class, 'store']);
+        Route::get('/interviews/my',                                              [InterviewController::class, 'myInterviews']);
+        Route::get('/interviews/{interview}',                                     [InterviewController::class, 'show']);
+        Route::patch('/interviews/{interview}',                                   [InterviewController::class, 'update']);
+        Route::delete('/interviews/{interview}',                                  [InterviewController::class, 'destroy']);
+        Route::post('/interviews/{interview}/interviewees/{interviewee}/feedback', [InterviewController::class, 'submitFeedback']);
+
         // Onboarding
         Route::apiResource('onboarding', OnboardingController::class);
         Route::get('/onboarding/{hire}/tasks',                            [OnboardingController::class, 'tasks']);
@@ -70,11 +84,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('training', TrainingController::class);
         Route::get('/training/{training}/enrollments',                    [TrainingController::class, 'enrollments']);
         Route::post('/training/{training}/enroll',                        [TrainingController::class, 'enroll']);
+        Route::post('/training/{training}/assign-trainees',               [TrainingController::class, 'assignTrainees']);
         Route::patch('/training/{training}/enrollments/{enrollment}',     [TrainingController::class, 'updateEnrollment']);
 
         // Payslips
         Route::get('/payslips',              [PayslipController::class, 'index']);
         Route::get('/payslips/{payslip}/download', [PayslipController::class, 'download']);
+
+        // Bank & Tax Details
+        Route::apiResource('bank-tax', BankTaxDetailController::class);
 
         // Performance
         Route::apiResource('performance', PerformanceController::class);
@@ -101,6 +119,22 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/surveys',                       [SurveyController::class, 'store']);
         Route::delete('/surveys/{survey}',            [SurveyController::class, 'destroy']);
         Route::post('/surveys/{survey}/respond',      [SurveyController::class, 'respond']);
+
+        // Policies & Rules
+        Route::get('/policies',              [PolicyController::class, 'index']);
+        Route::post('/policies',             [PolicyController::class, 'store']);
+        Route::patch('/policies/{policy}',   [PolicyController::class, 'update']);
+        Route::delete('/policies/{policy}',  [PolicyController::class, 'destroy']);
+        Route::post('/policies/{policy}/read', [PolicyController::class, 'markRead']);
+
+        // Notifications
+        Route::get('/notifications/unread',  [NotificationController::class, 'unread']);
+        Route::get('/notifications/count',   [NotificationController::class, 'count']);
+
+        // AI Chat
+        Route::post('/ai/chat',                       [AiChatController::class, 'chat']);
+        Route::get('/ai/conversations',                [AiChatController::class, 'conversations']);
+        Route::get('/ai/conversations/{conversation}', [AiChatController::class, 'messages']);
     });
 });
 
