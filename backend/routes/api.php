@@ -23,6 +23,8 @@ use App\Http\Controllers\Api\V1\InterviewController;
 use App\Http\Controllers\Api\V1\PolicyController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\AiChatController;
+use App\Http\Controllers\Api\V1\AssetController;
+use App\Http\Controllers\Api\V1\AssetCategoryController;
 
 // ── Public ────────────────────────────────────────────────────────────────────
 Route::post('/auth/login', [AuthController::class, 'login']);
@@ -130,6 +132,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Notifications
         Route::get('/notifications/unread',  [NotificationController::class, 'unread']);
         Route::get('/notifications/count',   [NotificationController::class, 'count']);
+
+        // Assets
+        Route::apiResource('assets', AssetController::class);
+        Route::apiResource('asset-categories', AssetCategoryController::class)->except(['show']);
 
         // AI Chat
         Route::post('/ai/chat',                       [AiChatController::class, 'chat']);
