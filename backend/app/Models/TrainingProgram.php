@@ -9,7 +9,12 @@ class TrainingProgram extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['title', 'category', 'instructor', 'duration', 'status', 'description', 'created_by'];
+    protected $fillable = ['title', 'category', 'instructor', 'duration', 'status', 'description', 'created_by', 'venue', 'start_date', 'end_date', 'start_time', 'end_time', 'mode', 'max_capacity'];
+
+    protected $casts = [
+        'start_date' => 'date',
+        'end_date'   => 'date',
+    ];
 
     public function creator() { return $this->belongsTo(User::class, 'created_by'); }
     public function enrollments() { return $this->hasMany(TrainingEnrollment::class); }

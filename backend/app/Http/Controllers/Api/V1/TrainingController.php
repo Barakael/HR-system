@@ -28,9 +28,14 @@ class TrainingController extends Controller
             'mode'         => 'nullable|in:Online,Offline,Hybrid',
             'start_date'   => 'nullable|date',
             'end_date'     => 'nullable|date|after_or_equal:start_date',
+            'start_time'   => 'nullable|date_format:H:i',
+            'end_time'     => 'nullable|date_format:H:i',
+            'venue'        => 'nullable|string|max:255',
             'max_capacity' => 'nullable|integer|min:1',
+            'duration'     => 'nullable|string',
             'description'  => 'nullable|string',
         ]);
+        $data['created_by'] = $request->user()->id;
         $program = TrainingProgram::create($data);
         return response()->json(new TrainingProgramResource($program), 201);
     }
@@ -44,8 +49,12 @@ class TrainingController extends Controller
             'mode'         => 'nullable|in:Online,Offline,Hybrid',
             'start_date'   => 'nullable|date',
             'end_date'     => 'nullable|date',
+            'start_time'   => 'nullable|date_format:H:i',
+            'end_time'     => 'nullable|date_format:H:i',
+            'venue'        => 'nullable|string|max:255',
             'max_capacity' => 'nullable|integer|min:1',
-            'status'       => 'nullable|in:Upcoming,Ongoing,Completed,Cancelled',
+            'duration'     => 'nullable|string',
+            'status'       => 'nullable|in:Upcoming,Ongoing,Completed,Cancelled,Active,Draft',
             'description'  => 'nullable|string',
         ]);
         $training->update($data);
@@ -114,5 +123,35 @@ class TrainingController extends Controller
             ->latest()
             ->get();
         return response()->json($enrollments);
+    }
+
+    // --- Bulk assign trainees ---
+
+    public function assignTrainees(Request $request, TrainingProgram $training): JsonResponse
+    {
+        $data = $request->validate([
+            'user_ids'   => 'required|array|min:1',
+            'user_ids.*' => 'exists:users,id',
+        ]);
+
+        $created = 0;
+        foreach ($data['user_ids'] as $userId) {
+            $existing = TrainingEnrollment::where('training_program_id', $training->id)
+                ->where('user_id', $userId)->first();
+            if (!$existing) {
+                TrainingEnrollment::create([
+                    'training_program_id' => $training->id,
+                    'user_id'             => $userId,
+                    'status'              => 'Not Started',
+                    'progress'            => 0,
+                ]);
+                $created++;
+            }
+        }
+
+        return response()->json([
+            'message' => "{$created} trainee(s) assigned successfully",
+            'assigned_count' => $created,
+        ], 201);
     }
 }
