@@ -32,6 +32,8 @@ import {
   User,
   ListChecks,
   ShieldCheck,
+  Video,
+  ScrollText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -103,6 +105,10 @@ const hrAdminSections: NavSection[] = [
     label: "System",
     items: [{ title: "Help Desk", url: "/help-desk", icon: Headphones }],
   },
+  {
+    label: "Communication",
+    items: [{ title: "Policies & Rules", url: "/policies", icon: ScrollText }],
+  },
 ];
 
 const employeeSections: NavSection[] = [
@@ -134,6 +140,7 @@ const employeeSections: NavSection[] = [
     items: [
       { title: "My Training", url: "/my-training", icon: BookOpen },
       { title: "My Performance", url: "/my-performance", icon: Target },
+      { title: "My Interviews", url: "/my-interviews", icon: Video },
       { title: "Surveys", url: "/surveys", icon: ClipboardList },
     ],
   },
