@@ -30,6 +30,7 @@ import Stations from "./pages/Stations";
 import BankTax from "./pages/BankTax";
 import MyInterviews from "./pages/MyInterviews";
 import Policies from "./pages/Policies";
+import Assets from "./pages/Assets";
 import { PlaceholderPage } from "./components/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 import {
@@ -67,6 +68,7 @@ const App = () => (
           <Route path="/bank-tax" element={<ProtectedRoute role="hr_admin"><BankTax /></ProtectedRoute>} />
           <Route path="/my-interviews" element={<ProtectedRoute><MyInterviews /></ProtectedRoute>} />
           <Route path="/policies" element={<ProtectedRoute><Policies /></ProtectedRoute>} />
+          <Route path="/assets" element={<ProtectedRoute role="hr_admin"><Assets /></ProtectedRoute>} />
           <Route path="/leave" element={<ProtectedRoute><LeaveManagement /></ProtectedRoute>} />
           <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
           <Route path="/approvals" element={<ProtectedRoute role="hr_admin"><Approvals /></ProtectedRoute>} />
