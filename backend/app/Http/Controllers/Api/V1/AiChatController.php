@@ -91,25 +91,41 @@ class AiChatController extends Controller
         // Get database schema for RAG context
         $schemaContext = $this->getDatabaseSchema();
 
-        $systemPrompt = <<<PROMPT
-You are an HR System AI assistant. You help HR administrators query and understand their company's HR database.
+   $systemPrompt = <<<PROMPT
+You are an HR data assistant. You have NO knowledge of this company's data — you only know the database structure below. You MUST always query the database; never guess, assume, or invent any data.
 
 DATABASE SCHEMA:
 {$schemaContext}
 
-RULES:
-1. When the user asks about data in the system, generate a SQL SELECT query to retrieve it.
-2. ONLY generate SELECT queries. Never generate INSERT, UPDATE, DELETE, DROP, ALTER, or any data-modifying SQL.
-3. Always limit results to 100 rows maximum (add LIMIT 100 if not present).
-4. Wrap your SQL in ```sql ... ``` code blocks so it can be extracted.
-5. After the SQL result is returned, explain the results in a clear, friendly manner.
-6. If the question doesn't need a database query, just answer directly with your knowledge about HR best practices.
-7. Use table/column names exactly as they appear in the schema.
-8. For user names, join with the 'users' table. The 'users' table has: id, name, email.
-9. When counting or aggregating, use appropriate SQL functions.
-10. If you're unsure about the exact column names, say so rather than guessing.
+━━━ MANDATORY RULE ━━━
+EVERY response MUST contain a ```sql ... ``` block. No exceptions.
+If you don't include SQL, your answer will be rejected.
+NEVER use your own knowledge to answer — ALL facts come from the SQL query result.
 
-Respond in a helpful, concise manner appropriate for an HR professional.
+━━━ RESPONSE FORMAT ━━━
+Write ONE short heading (no numbers, no names, no facts — just the topic).
+Then immediately the SQL block. Nothing else.
+
+Good headings: "Employees who joined this month:", "Pending leave requests:", "Department breakdown:"
+Bad headings: "You have 11 employees" (contains a fact), "Let me check..." (process language)
+
+━━━ SQL RULES ━━━
+- SELECT only (never INSERT/UPDATE/DELETE/DROP/ALTER)
+- LIMIT 100 always
+- Never select id or user_id — always JOIN users u ON ...user_id = u.id and use u.name
+- Use DATE(col) for all date/datetime fields
+- Only select columns relevant to the question
+- Use the exact table/column names from the schema above
+- For "this month": WHERE strftime('%Y-%m', col) = strftime('%Y-%m', 'now')
+- For "today": WHERE DATE(col) = DATE('now')
+
+EXAMPLE:
+Pending leave requests:
+```sql
+SELECT u.name, lr.type, DATE(lr.from_date) as from_date, DATE(lr.to_date) as to_date, lr.days
+FROM leave_requests lr JOIN users u ON lr.user_id = u.id
+WHERE lr.status = 'Pending' LIMIT 100
+```
 PROMPT;
 
         $messages = array_merge(
@@ -137,10 +153,14 @@ PROMPT;
 
             $aiContent = $response->json('choices.0.message.content') ?? 'Sorry, I could not generate a response.';
 
-            // Extract SQL if present
+            // Extract SQL — if missing, the AI responded without querying the DB (hallucination risk)
             $sqlQuery = null;
-            $queryResult = null;
-            if (preg_match('/```sql\s*(.*?)\s*```/si', $aiContent, $matches)) {
+            $finalResponse = $aiContent;
+
+            if (!preg_match('/```sql\s*(.*?)\s*```/si', $aiContent)) {
+                // AI answered without SQL — refuse to show that response
+                $finalResponse = "I can only answer based on your actual HR data. Could you rephrase your question so I can look it up properly?";
+            } elseif (preg_match('/```sql\s*(.*?)\s*```/si', $aiContent, $matches)) {
                 $sqlQuery = trim($matches[1]);
 
                 // Safety: only allow SELECT
@@ -152,24 +172,19 @@ PROMPT;
                     }
 
                     try {
-                        $queryResult = DB::select(DB::raw($sqlQuery));
+                        $queryResult = DB::select($sqlQuery);
 
-                        // Format results into readable text
-                        if (!empty($queryResult)) {
-                            $resultArray = array_map(fn($row) => (array) $row, $queryResult);
-                            $count = count($resultArray);
-                            $resultText = "\n\n**Query Results** ({$count} rows):\n";
-                            $resultText .= $this->formatResultsAsTable($resultArray);
-                            $aiContent .= $resultText;
-                        } else {
-                            $aiContent .= "\n\n**Query Results**: No data found.";
-                        }
+                        // Build natural-language response via a small focused AI call
+                        $finalResponse = $this->buildNaturalResponse(
+                            $queryResult, $aiContent, $apiKey
+                        );
+
                     } catch (\Exception $e) {
-                        $aiContent .= "\n\n**Query Error**: Could not execute query - " . $e->getMessage();
+                        $finalResponse = "I encountered an error while retrieving the data. Please try rephrasing your question.";
                         $sqlQuery = $sqlQuery . ' -- ERROR: ' . $e->getMessage();
                     }
                 } else {
-                    $aiContent .= "\n\n⚠️ Non-SELECT queries are blocked for safety.";
+                    $finalResponse = "For security reasons, I can only retrieve data, not modify it.";
                     $sqlQuery = null;
                 }
             }
@@ -178,7 +193,7 @@ PROMPT;
             ChatMessage::create([
                 'conversation_id' => $conversation->id,
                 'role' => 'assistant',
-                'content' => $aiContent,
+                'content' => $finalResponse,
                 'sql_query' => $sqlQuery,
             ]);
 
@@ -186,7 +201,7 @@ PROMPT;
 
             return response()->json([
                 'conversation_id' => $conversation->id,
-                'message' => $aiContent,
+                'message' => $finalResponse,
                 'sql_query' => $sqlQuery,
             ]);
 
@@ -248,10 +263,15 @@ PROMPT;
             $rows = array_map(fn($r) => array_slice($r, 0, 8, true), $rows);
         }
 
-        // Limit rows
+        // Human-readable column headers (snake_case → Title Case)
+        $displayHeaders = array_map(
+            fn($h) => ucwords(str_replace('_', ' ', $h)),
+            $headers
+        );
+
         $displayRows = array_slice($rows, 0, 20);
 
-        $table = "\n| " . implode(' | ', $headers) . " |\n";
+        $table = "\n| " . implode(' | ', $displayHeaders) . " |\n";
         $table .= "| " . implode(' | ', array_fill(0, count($headers), '---')) . " |\n";
 
         foreach ($displayRows as $row) {
@@ -259,6 +279,8 @@ PROMPT;
             foreach ($headers as $h) {
                 $val = $row[$h] ?? '';
                 $val = str_replace(['|', "\n", "\r"], ['\|', ' ', ''], (string) $val);
+                // Trim timestamps to date only (e.g. 2026-03-12 00:00:00 → 2026-03-12)
+                $val = preg_replace('/^(\d{4}-\d{2}-\d{2}) 00:00:00$/', '$1', $val);
                 $values[] = \Illuminate\Support\Str::limit((string) $val, 40);
             }
             $table .= "| " . implode(' | ', $values) . " |\n";
@@ -269,5 +291,205 @@ PROMPT;
         }
 
         return $table;
+    }
+
+    /**
+     * Send a small, cheap AI call to turn raw DB rows into a natural human sentence.
+     * No schema is sent — only the data rows — so token cost is minimal.
+     */
+    private function buildNaturalResponse(array $queryResult, string $aiResponse, string $apiKey): string
+    {
+        // Extract heading from the AI's first response
+        $beforeSql = preg_replace('/```sql.*$/si', '', $aiResponse);
+        $heading   = '';
+        foreach (array_filter(array_map('trim', explode("\n", $beforeSql))) as $line) {
+            if (!preg_match('/\b(sql|query|table|database|I will|let me|here\'?s|execute|retrieve)\b/i', $line)) {
+                $heading = rtrim($line, ':');
+                break;
+            }
+        }
+
+        if (empty($queryResult)) {
+            return $heading
+                ? "Looks like there's nothing to report for **{$heading}** right now."
+                : "Nothing found at this time.";
+        }
+
+        $rows  = array_map(fn($r) => (array) $r, $queryResult);
+        $count = count($rows);
+
+        // Single numeric result — no need for an AI call
+        if ($count === 1 && count($rows[0]) === 1) {
+            $value = array_values($rows[0])[0];
+            if (is_numeric($value)) {
+                $n = $value == (int)$value ? (int)$value : $value;
+                $topic = strtolower($heading ?: 'total');
+                return $n === 0
+                    ? "There are currently no {$topic}."
+                    : "You have a total of **{$n}** {$topic}.";
+            }
+            return $heading ? "**{$heading}:** {$value}" : "**{$value}**";
+        }
+
+        // Format dates before sending to AI
+        $cleanRows = array_map(function ($row) {
+            return array_map(function ($val) {
+                if (is_string($val) && preg_match('/^(\d{4})-(\d{2})-(\d{2})( 00:00:00)?$/', $val, $m)) {
+                    return date('d M Y', mktime(0, 0, 0, (int)$m[2], (int)$m[3], (int)$m[1]));
+                }
+                return $val;
+            }, $row);
+        }, $rows);
+
+        // Compact the data as a simple text block (cheap tokens)
+        $dataText = '';
+        foreach ($cleanRows as $i => $row) {
+            $dataText .= ($i + 1) . '. ' . implode(' | ', array_filter(array_values($row), fn($v) => $v !== null && $v !== '')) . "\n";
+        }
+        if ($count > 15) {
+            $dataText .= "(and " . ($count - 15) . " more)\n";
+        }
+
+        try {
+            $formatResponse = Http::withHeaders([
+                'Authorization' => "Bearer {$apiKey}",
+                'Content-Type'  => 'application/json',
+            ])->timeout(20)->post('https://api.openai.com/v1/chat/completions', [
+                'model'       => config('services.openai.model', 'gpt-4o-mini'),
+                'max_tokens'  => 300,
+                'temperature' => 0.4,
+                'messages'    => [
+                    [
+                        'role'    => 'system',
+                        'content' => implode("\n", [
+                            'You are an HR assistant writing to your manager in plain, friendly English.',
+                            'Turn the data below into 1-3 natural sentences. Rules:',
+                            '- Sound like a person talking, not a report',
+                            '- Use bold (**name**) for people\'s names only',
+                            '- Keep dates as given (e.g. 12 Mar 2026)',
+                            '- Include all relevant detail but no fluff',
+                            '- No bullet points, no tables, no lists, no headers',
+                            '- Never say "Based on the data" or "According to the records"',
+                        ]),
+                    ],
+                    [
+                        'role'    => 'user',
+                        'content' => "Topic: {$heading}\nData:\n{$dataText}",
+                    ],
+                ],
+            ]);
+
+            if ($formatResponse->successful()) {
+                $natural = trim($formatResponse->json('choices.0.message.content') ?? '');
+                if ($natural) return $natural;
+            }
+        } catch (\Exception $e) {
+            // Fall through to plain fallback
+        }
+
+        // Fallback: plain bullet list if AI call fails
+        return $this->interpretQueryResults($queryResult, $aiResponse);
+    }
+    private function interpretQueryResults(array $queryResult, string $originalResponse): string
+    {
+        // Extract the heading line (before SQL block, skip technical phrases)
+        $beforeSql = preg_replace('/```sql.*$/si', '', $originalResponse);
+        $heading   = '';
+        foreach (array_filter(array_map('trim', explode("\n", $beforeSql))) as $line) {
+            if (!preg_match('/\b(sql|query|table|database|column|row|record|I will|let me|here\'?s|execute|retrieve|look into)\b/i', $line)) {
+                $heading = rtrim($line, ':') . ':';
+                break;
+            }
+        }
+
+        if (empty($queryResult)) {
+            $h = $heading ?: 'Result:';
+            return "{$h}\n\nNothing found at this time.";
+        }
+
+        $rows  = array_map(fn($row) => (array) $row, $queryResult);
+        $count = count($rows);
+
+        // Single numeric result (COUNT, SUM, etc.)
+        if ($count === 1 && count($rows[0]) === 1) {
+            $key    = array_key_first($rows[0]);
+            $value  = $rows[0][$key];
+            $h      = $heading ?: ucwords(str_replace('_', ' ', $key)) . ':';
+            $number = is_numeric($value) ? ($value == (int)$value ? (int)$value : $value) : null;
+
+            if ($number !== null) {
+                return $number === 0
+                    ? "{$h}\n\nNone at this time."
+                    : "{$h}\n\n**{$number}**";
+            }
+            return "{$h}\n\n**{$value}**";
+        }
+
+        // Multi-row: build a conversational bullet list
+        $h        = $heading ? $heading . "\n\n" : '';
+        $keys     = array_keys($rows[0]);
+        // The first column is treated as the primary identifier (usually name)
+        $nameKey  = $keys[0];
+        $detailKeys = array_slice($keys, 1);
+
+        $lines = [];
+        $displayRows = array_slice($rows, 0, 15);
+        foreach ($displayRows as $row) {
+            $name    = $row[$nameKey] ?? '—';
+            $details = [];
+            foreach ($detailKeys as $k) {
+                $val = $row[$k] ?? null;
+                if ($val === null || $val === '') continue;
+                // Clean up timestamps
+                $val = preg_replace('/^(\d{4}-\d{2}-\d{2}) 00:00:00$/', '$1', (string)$val);
+                $details[] = $val;
+            }
+            $line = '- **' . $name . '**';
+            if (!empty($details)) {
+                $line .= ' — ' . implode(', ', $details);
+            }
+            $lines[] = $line;
+        }
+
+        $result = $h . implode("\n", $lines);
+
+        if ($count > 15) {
+            $result .= "\n\n*...and " . ($count - 15) . " more.*";
+        }
+
+        return $result;
+    }
+
+    /**
+     * Summarize query results for AI interpretation.
+     */
+    private function summarizeQueryResults(array $queryResult): string
+    {
+        if (empty($queryResult)) {
+            return "No records found (0 rows returned).";
+        }
+
+        $resultArray = array_map(fn($row) => (array) $row, $queryResult);
+        $count = count($resultArray);
+        
+        // For single numeric results (counts, sums, etc.)
+        if ($count === 1 && count($resultArray[0]) === 1) {
+            $key = array_key_first($resultArray[0]);
+            $value = $resultArray[0][$key];
+            return "Result: {$value} (field: {$key})";
+        }
+
+        // For multiple rows, provide summary
+        $summary = "Found {$count} record(s).\n\n";
+        
+        // Show first few rows
+        $displayLimit = min(20, $count);
+        $summary .= $this->formatResultsAsTable(array_slice($resultArray, 0, $displayLimit));
+        
+        if ($count > $displayLimit) {
+            $summary .= "\n\n(... and " . ($count - $displayLimit) . " more records)";
+        }
+
+        return $summary;
     }
 }
