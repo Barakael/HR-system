@@ -55,6 +55,7 @@ export interface Asset {
   station_id: number | null;
   station_name: string | null;
   description: string | null;
+  quantity: number;
   created_by_name: string | null;
   created_at: string;
 }
