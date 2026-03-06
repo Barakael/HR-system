@@ -14,10 +14,17 @@ class SurveyController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $userId = $request->user()->id;
+
         $surveys = Survey::with('questions')
             ->withCount('responses')
             ->orderByDesc('created_at')
-            ->get();
+            ->get()
+            ->map(function ($survey) use ($userId) {
+                $survey->has_responded = $survey->responses()
+                    ->where('user_id', $userId)->exists();
+                return $survey;
+            });
 
         return response()->json($surveys);
     }
@@ -52,6 +59,36 @@ class SurveyController extends Controller
     {
         $survey->delete();
         return response()->json(['message' => 'Survey deleted']);
+    }
+
+    public function responses(Request $request, Survey $survey): JsonResponse
+    {
+        $responses = $survey->responses()
+            ->with(['answers', 'user:id,name'])
+            ->get();
+
+        $questions = $survey->questions->map(function ($question) use ($responses) {
+            $answers = $responses->flatMap(function ($r) use ($question) {
+                return $r->answers
+                    ->where('survey_question_id', $question->id)
+                    ->map(fn ($a) => [
+                        'user'   => $r->user->name ?? 'Anonymous',
+                        'answer' => $a->answer,
+                    ]);
+            });
+            return [
+                'question_id'   => $question->id,
+                'question_text' => $question->text,
+                'type'          => $question->type,
+                'options'       => $question->options,
+                'answers'       => $answers->values(),
+            ];
+        });
+
+        return response()->json([
+            'total_responses' => $responses->count(),
+            'questions'       => $questions,
+        ]);
     }
 
     public function respond(Request $request, Survey $survey): JsonResponse
