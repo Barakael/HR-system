@@ -90,10 +90,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/training/{training}/enrollments/{enrollment}',     [TrainingController::class, 'updateEnrollment']);
 
         // Payslips
-        Route::get('/payslips',              [PayslipController::class, 'index']);
-        Route::get('/payslips/{payslip}/download', [PayslipController::class, 'download']);
+        Route::get('/payslips',                    [PayslipController::class, 'index']);
+        Route::post('/payslips',                   [PayslipController::class, 'store']);
+        Route::put('/payslips/{payslip}',           [PayslipController::class, 'update']);
+        Route::delete('/payslips/{payslip}',        [PayslipController::class, 'destroy']);
+        Route::get('/payslips/{payslip}/download',  [PayslipController::class, 'download']);
 
         // Bank & Tax Details
+        Route::get('/bank-tax/mine',               [BankTaxDetailController::class, 'mine']);
+        Route::put('/bank-tax/mine',               [BankTaxDetailController::class, 'updateMine']);
         Route::apiResource('bank-tax', BankTaxDetailController::class);
 
         // Performance
