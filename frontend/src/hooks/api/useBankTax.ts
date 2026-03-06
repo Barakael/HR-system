@@ -7,8 +7,12 @@ export interface BankTaxRecord {
   user_name: string;
   user_email: string;
   bank_name: string;
+  account_name: string;
+  account_type: string;
   masked_account: string;
   sort_code: string;
+  swift_bic: string;
+  iban: string;
   tax_code: string;
   national_insurance: string;
 }
@@ -20,8 +24,12 @@ function mapRecord(raw: Record<string, unknown>): BankTaxRecord {
     user_name:          (raw.user_name as string) ?? "",
     user_email:         (raw.user_email as string) ?? "",
     bank_name:          (raw.bank_name as string) ?? "",
+    account_name:       (raw.account_name as string) ?? "",
+    account_type:       (raw.account_type as string) ?? "",
     masked_account:     (raw.masked_account as string) ?? "",
     sort_code:          (raw.sort_code as string) ?? "",
+    swift_bic:          (raw.swift_bic as string) ?? "",
+    iban:               (raw.iban as string) ?? "",
     tax_code:           (raw.tax_code as string) ?? "",
     national_insurance: (raw.national_insurance as string) ?? "",
   };
@@ -59,5 +67,22 @@ export function useDeleteBankTax() {
     mutationFn: (id: number) =>
       api.delete(`/api/v1/bank-tax/${id}`).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["bank-tax"] }),
+  });
+}
+
+// Employee self-service hooks
+export function useMyBankTax() {
+  return useQuery<BankTaxRecord>({
+    queryKey: ["bank-tax", "mine"],
+    queryFn: () => api.get("/api/v1/bank-tax/mine").then((r) => mapRecord(r.data)),
+  });
+}
+
+export function useUpdateMyBankTax() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Record<string, unknown>) =>
+      api.put("/api/v1/bank-tax/mine", data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["bank-tax", "mine"] }),
   });
 }
