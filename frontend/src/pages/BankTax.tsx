@@ -24,10 +24,9 @@ const BankTax = () => {
   const [form, setForm] = useState({
     user_id: "",
     bank_name: "",
+    account_name: "",
+    account_type: "",
     account_number: "",
-    sort_code: "",
-    tax_code: "",
-    national_insurance: "",
   });
 
   const existingUserIds = new Set(records.map((r) => r.user_id));
@@ -35,7 +34,7 @@ const BankTax = () => {
 
   const openAdd = () => {
     setEditing(null);
-    setForm({ user_id: "", bank_name: "", account_number: "", sort_code: "", tax_code: "", national_insurance: "" });
+    setForm({ user_id: "", bank_name: "", account_name: "", account_type: "", account_number: "" });
     setDialogOpen(true);
   };
 
@@ -43,11 +42,10 @@ const BankTax = () => {
     setEditing(record);
     setForm({
       user_id: String(record.user_id),
-      bank_name: record.bank_name,
+      bank_name: record.bank_name || "",
+      account_name: record.account_name || "",
+      account_type: record.account_type || "",
       account_number: "",
-      sort_code: record.sort_code,
-      tax_code: record.tax_code,
-      national_insurance: record.national_insurance,
     });
     setDialogOpen(true);
   };
@@ -60,9 +58,8 @@ const BankTax = () => {
 
     const payload: Record<string, unknown> = {
       bank_name: form.bank_name,
-      sort_code: form.sort_code,
-      tax_code: form.tax_code,
-      national_insurance: form.national_insurance,
+      account_name: form.account_name,
+      account_type: form.account_type,
     };
 
     if (form.account_number) payload.account_number = form.account_number;
@@ -152,10 +149,9 @@ const BankTax = () => {
                 <tr className="border-b border-border bg-muted/30">
                   <th className="text-left px-5 py-3 font-medium text-muted-foreground">Employee</th>
                   <th className="text-left px-5 py-3 font-medium text-muted-foreground">Bank Name</th>
+                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">Account Name</th>
+                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">Type</th>
                   <th className="text-left px-5 py-3 font-medium text-muted-foreground">Account</th>
-                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">Sort Code</th>
-                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">Tax Code</th>
-                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">NI Number</th>
                   <th className="text-right px-5 py-3 font-medium text-muted-foreground">Actions</th>
                 </tr>
               </thead>
@@ -167,10 +163,9 @@ const BankTax = () => {
                       <p className="text-xs text-muted-foreground">{rec.user_email}</p>
                     </td>
                     <td className="px-5 py-3 text-card-foreground">{rec.bank_name || "—"}</td>
+                    <td className="px-5 py-3 text-card-foreground">{rec.account_name || "—"}</td>
+                    <td className="px-5 py-3 text-card-foreground">{rec.account_type || "—"}</td>
                     <td className="px-5 py-3 text-card-foreground font-mono">{rec.masked_account || "—"}</td>
-                    <td className="px-5 py-3 text-card-foreground">{rec.sort_code || "—"}</td>
-                    <td className="px-5 py-3 text-card-foreground">{rec.tax_code || "—"}</td>
-                    <td className="px-5 py-3 text-card-foreground">{rec.national_insurance || "—"}</td>
                     <td className="px-5 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(rec)}>
@@ -191,7 +186,7 @@ const BankTax = () => {
 
       {/* Add / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Bank & Tax Details" : "Add Bank & Tax Details"}</DialogTitle>
           </DialogHeader>
@@ -209,33 +204,39 @@ const BankTax = () => {
                 </Select>
               </div>
             )}
-            <div className="space-y-2">
-              <Label>Bank Name</Label>
-              <Input value={form.bank_name} onChange={(e) => setForm({ ...form, bank_name: e.target.value })} placeholder="e.g. Barclays" />
-            </div>
-            <div className="space-y-2">
-              <Label>Account Number {editing && "(leave blank to keep existing)"}</Label>
-              <Input
-                type="password"
-                value={form.account_number}
-                onChange={(e) => setForm({ ...form, account_number: e.target.value })}
-                placeholder={editing ? "••••••••" : "Enter account number"}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Bank Name</Label>
+                <Input value={form.bank_name} onChange={(e) => setForm({ ...form, bank_name: e.target.value })} placeholder="e.g. Barclays" />
+              </div>
+              <div className="space-y-2">
+                <Label>Account Name</Label>
+                <Input value={form.account_name} onChange={(e) => setForm({ ...form, account_name: e.target.value })} placeholder="e.g. John Smith" />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Sort Code</Label>
-                <Input value={form.sort_code} onChange={(e) => setForm({ ...form, sort_code: e.target.value })} placeholder="e.g. 12-34-56" />
+                <Label>Account Type</Label>
+                <Select value={form.account_type} onValueChange={(v) => setForm({ ...form, account_type: v })}>
+                  <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Current">Current</SelectItem>
+                    <SelectItem value="Savings">Savings</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
-                <Label>Tax Code</Label>
-                <Input value={form.tax_code} onChange={(e) => setForm({ ...form, tax_code: e.target.value })} placeholder="e.g. 1257L" />
+                <Label>Account Number {editing && "(leave blank to keep)"}</Label>
+                <Input
+                  type="password"
+                  value={form.account_number}
+                  onChange={(e) => setForm({ ...form, account_number: e.target.value })}
+                  placeholder={editing ? "••••••••" : "Enter account number"}
+                />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>National Insurance Number</Label>
-              <Input value={form.national_insurance} onChange={(e) => setForm({ ...form, national_insurance: e.target.value })} placeholder="e.g. AB 12 34 56 C" />
-            </div>
+
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>

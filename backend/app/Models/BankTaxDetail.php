@@ -6,7 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class BankTaxDetail extends Model
 {
-    protected $fillable = ['user_id', 'bank_name', 'account_number', 'sort_code', 'tax_code', 'national_insurance'];
+    protected $fillable = [
+        'user_id', 'bank_name', 'account_name', 'account_type', 'account_number',
+        'sort_code', 'swift_bic', 'iban', 'tax_code', 'national_insurance',
+    ];
     protected $casts = ['account_number' => 'encrypted'];
     protected $hidden = ['account_number'];
 
