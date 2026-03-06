@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { HRSidebar } from "@/components/HRSidebar";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Moon, Sun, Bell } from "lucide-react";
+import { Moon, Sun, Bell, Maximize2, Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useNotificationCount, useUnreadNotifications } from "@/hooks/api/useNotifications";
@@ -25,6 +25,17 @@ export function HRLayout({ children, title, subtitle, actions }: HRLayoutProps) 
   const { data: notifications = [] } = useUnreadNotifications();
   const markRead = useMarkPolicyRead();
   const [notifOpen, setNotifOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  }, []);
 
   const handleNotifClick = (id: number) => {
     markRead.mutate(id);
@@ -44,6 +55,17 @@ export function HRLayout({ children, title, subtitle, actions }: HRLayoutProps) 
             </div>
             <div className="flex items-center gap-2">
               {actions}
+
+              {/* Fullscreen Toggle */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleFullscreen}
+                aria-label="Toggle fullscreen"
+                className="h-9 w-9 text-foreground hover:bg-muted"
+              >
+                {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+              </Button>
 
               {/* Notification Bell */}
               <Popover open={notifOpen} onOpenChange={setNotifOpen}>

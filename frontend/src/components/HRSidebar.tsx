@@ -68,7 +68,7 @@ const hrAdminSections: NavSection[] = [
     items: [
       { title: "Job Postings", url: "/recruitment", icon: UserPlus },
       // { title: "Onboarding", url: "/onboarding", icon: ListChecks },
-      { title: "Transfers", url: "/transfers", icon: ArrowRightLeft },
+      // { title: "Transfers", url: "/transfers", icon: ArrowRightLeft },
       { title: "Exit", url: "/exit", icon: LogOut },
     ],
   },
