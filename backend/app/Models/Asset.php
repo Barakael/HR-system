@@ -10,7 +10,7 @@ class Asset extends Model
     protected $fillable = [
         'asset_tag', 'name', 'category_id', 'serial_number',
         'purchase_date', 'purchase_price', 'warranty_expiry',
-        'station_id', 'description', 'created_by',
+        'station_id', 'description', 'quantity', 'created_by',
     ];
 
     protected function casts(): array
@@ -19,6 +19,7 @@ class Asset extends Model
             'purchase_date'  => 'date',
             'warranty_expiry' => 'date',
             'purchase_price' => 'decimal:2',
+            'quantity'       => 'integer',
         ];
     }
 

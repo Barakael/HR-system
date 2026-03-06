@@ -41,6 +41,7 @@ class AssetController extends Controller
                 'station_id'      => $a->station_id,
                 'station_name'    => $a->station?->name,
                 'description'     => $a->description,
+                'quantity'        => $a->quantity ?? 1,
                 'created_by_name' => $a->creator?->name,
                 'created_at'      => $a->created_at->toDateTimeString(),
             ];
@@ -59,8 +60,10 @@ class AssetController extends Controller
             'warranty_expiry' => 'nullable|date',
             'station_id'      => 'nullable|exists:stations,id',
             'description'     => 'nullable|string',
+            'quantity'        => 'nullable|integer|min:1',
         ]);
 
+        $data['quantity'] = $data['quantity'] ?? 1;
         $asset = Asset::create(array_merge($data, ['created_by' => $request->user()->id]));
         $asset->load(['category', 'station', 'creator']);
 
@@ -77,6 +80,7 @@ class AssetController extends Controller
             'station_id'      => $asset->station_id,
             'station_name'    => $asset->station?->name,
             'description'     => $asset->description,
+            'quantity'        => $asset->quantity ?? 1,
             'created_by_name' => $asset->creator?->name,
             'created_at'      => $asset->created_at->toDateTimeString(),
         ], 201);
@@ -94,6 +98,7 @@ class AssetController extends Controller
             'warranty_expiry' => 'nullable|date',
             'station_id'      => 'nullable|exists:stations,id',
             'description'     => 'nullable|string',
+            'quantity'        => 'nullable|integer|min:1',
         ]);
 
         $asset->update($data);
@@ -112,6 +117,7 @@ class AssetController extends Controller
             'station_id'      => $asset->station_id,
             'station_name'    => $asset->station?->name,
             'description'     => $asset->description,
+            'quantity'        => $asset->quantity ?? 1,
             'created_by_name' => $asset->creator?->name,
             'created_at'      => $asset->created_at->toDateTimeString(),
         ]);
