@@ -114,11 +114,37 @@ export function useEnroll() {
   });
 }
 
-export function useAssignTrainees() {
+export interface TrainingAttendee {
+  enrollment_id: number;
+  user_id: number;
+  name: string;
+  email: string;
+  status: string;
+  attended: boolean;
+}
+
+export function useAssignByDepartment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ trainingId, user_ids }: { trainingId: number; user_ids: number[] }) =>
-      api.post(`/api/v1/training/${trainingId}/assign-trainees`, { user_ids }).then((r) => r.data),
+    mutationFn: ({ trainingId, department_ids, all_departments }: { trainingId: number; department_ids?: number[]; all_departments?: boolean }) =>
+      api.post(`/api/v1/training/${trainingId}/assign-by-department`, { department_ids, all_departments }).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["training"] }),
+  });
+}
+
+export function useGetAttendees(trainingId: number | null) {
+  return useQuery<TrainingAttendee[]>({
+    queryKey: ["training", "attendees", trainingId],
+    queryFn: () => api.get(`/api/v1/training/${trainingId}/attendees`).then((r) => r.data),
+    enabled: trainingId !== null,
+  });
+}
+
+export function useMarkAttended() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ trainingId, enrollmentId, attended }: { trainingId: number; enrollmentId: number; attended: boolean }) =>
+      api.patch(`/api/v1/training/${trainingId}/enrollments/${enrollmentId}/attended`, { attended }).then((r) => r.data),
+    onSuccess: (_data, vars) => qc.invalidateQueries({ queryKey: ["training", "attendees", vars.trainingId] }),
   });
 }
