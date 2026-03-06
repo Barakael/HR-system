@@ -10,6 +10,7 @@ export interface BankTaxRecord {
   account_name: string;
   account_type: string;
   masked_account: string;
+  account_number: string;
   sort_code: string;
   swift_bic: string;
   iban: string;
@@ -27,6 +28,7 @@ function mapRecord(raw: Record<string, unknown>): BankTaxRecord {
     account_name:       (raw.account_name as string) ?? "",
     account_type:       (raw.account_type as string) ?? "",
     masked_account:     (raw.masked_account as string) ?? "",
+    account_number:     (raw.account_number as string) ?? "",
     sort_code:          (raw.sort_code as string) ?? "",
     swift_bic:          (raw.swift_bic as string) ?? "",
     iban:               (raw.iban as string) ?? "",
