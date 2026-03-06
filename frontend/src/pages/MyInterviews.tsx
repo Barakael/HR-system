@@ -47,7 +47,7 @@ const MyInterviews = () => {
   };
 
   return (
-    <HRLayout title="My Interviews" subtitle="Interviews you're assigned to as an interviewer">
+    <HRLayout title="My Assignments" subtitle="Interviews you're assigned to as an interviewer">
       {isLoading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
       ) : interviews.length === 0 ? (
@@ -60,7 +60,7 @@ const MyInterviews = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Interview list */}
           <div className="space-y-4">
-            <h2 className="font-semibold text-card-foreground">Assigned Interviews</h2>
+            <h2 className="font-semibold text-card-foreground">Assignments</h2>
             {interviews.map((iv) => (
               <button
                 key={iv.id}

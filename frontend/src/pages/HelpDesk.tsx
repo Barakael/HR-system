@@ -12,6 +12,7 @@ import { StatsCard } from "@/components/StatsCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
 import { useTickets, useCreateTicket } from "@/hooks/api/useHelpDesk";
+import { useDepartments } from "@/hooks/api/useDepartments";
 
 type TicketStatus = "Open" | "In Progress" | "Resolved";
 type TicketPriority = "Low" | "Medium" | "High";
@@ -32,6 +33,7 @@ const priorityVariant: Record<string, "destructive" | "warning" | "default"> = {
 export default function HelpDesk() {
   const { currentUser, isHRAdmin } = useAuth();
   const { data: allTickets = [], isLoading } = useTickets();
+  const { data: departments = [] } = useDepartments();
   const createTicket = useCreateTicket();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -39,6 +41,7 @@ export default function HelpDesk() {
   const [category, setCategory] = useState<TicketCategory>("IT");
   const [priority, setPriority] = useState<TicketPriority>("Medium");
   const [description, setDescription] = useState("");
+  const [departmentId, setDepartmentId] = useState<string>("");
 
   const myTickets = isHRAdmin ? allTickets : allTickets.filter((t) => t.employee === currentUser?.name);
   const openCount = myTickets.filter((t) => t.status === "Open").length;
@@ -47,10 +50,10 @@ export default function HelpDesk() {
 
   const handleSubmit = () => {
     if (!subject.trim()) return;
-    createTicket.mutate({ subject, category, priority, description }, {
+    createTicket.mutate({ subject, category, priority, description, department_id: departmentId ? Number(departmentId) : undefined }, {
       onSuccess: () => {
         toast({ title: "Ticket submitted" });
-        setSubject(""); setCategory("IT"); setPriority("Medium"); setDescription("");
+        setSubject(""); setCategory("IT"); setPriority("Medium"); setDescription(""); setDepartmentId("");
         setOpen(false);
       },
       onError: () => toast({ title: "Failed to submit ticket", variant: "destructive" }),
@@ -87,6 +90,7 @@ export default function HelpDesk() {
                   <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground">Ticket</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Subject</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Category</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Department</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Priority</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Status</th>
                   {isHRAdmin && <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Submitted By</th>}
@@ -99,6 +103,7 @@ export default function HelpDesk() {
                     <td className="px-5 py-3.5 font-mono text-xs text-muted-foreground">{ticket.ticket_number}</td>
                     <td className="px-4 py-3.5 font-medium text-foreground max-w-xs truncate">{ticket.subject}</td>
                     <td className="px-4 py-3.5"><StatusBadge label={ticket.category} variant="default" /></td>
+                    <td className="px-4 py-3.5 text-muted-foreground text-xs">{ticket.department_name ?? "—"}</td>
                     <td className="px-4 py-3.5"><StatusBadge label={ticket.priority} variant={priorityVariant[ticket.priority] ?? "default"} /></td>
                     <td className="px-4 py-3.5"><StatusBadge label={ticket.status} variant={statusVariant[ticket.status] ?? "default"} /></td>
                     {isHRAdmin && <td className="px-4 py-3.5 text-foreground">{ticket.employee}</td>}
@@ -107,7 +112,7 @@ export default function HelpDesk() {
                 ))}
                 {myTickets.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-5 py-10 text-center text-sm text-muted-foreground">
+                    <td colSpan={8} className="px-5 py-10 text-center text-sm text-muted-foreground">
                       No tickets found.
                     </td>
                   </tr>
@@ -127,6 +132,17 @@ export default function HelpDesk() {
             <div>
               <Label>Subject</Label>
               <Input className="mt-1" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Brief description of your issue" />
+            </div>
+            <div>
+              <Label>Target Department</Label>
+              <Select value={departmentId} onValueChange={setDepartmentId}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select department..." /></SelectTrigger>
+                <SelectContent>
+                  {departments.map((d) => (
+                    <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

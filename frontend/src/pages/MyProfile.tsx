@@ -1,7 +1,7 @@
 import { HRLayout } from "@/components/HRLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
-import { User, Mail, Phone, Building2, MapPin, Shield, Edit2, Check, X, Loader2, Landmark, CreditCard } from "lucide-react";
+import { User, Mail, Phone, Building2, MapPin, Shield, Edit2, Check, X, Loader2, Landmark, CreditCard, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +25,7 @@ export default function MyProfile() {
   const { data: bankTax, isLoading: bankTaxLoading } = useMyBankTax();
   const updateMyBankTax = useUpdateMyBankTax();
   const [bankDialogOpen, setBankDialogOpen] = useState(false);
+  const [showAccount, setShowAccount] = useState(false);
   const [bankForm, setBankForm] = useState({
     bank_name: "",
     account_name: "",
@@ -37,8 +38,9 @@ export default function MyProfile() {
       bank_name: bankTax?.bank_name || "",
       account_name: bankTax?.account_name || "",
       account_type: bankTax?.account_type || "",
-      account_number: "",
+      account_number: bankTax?.account_number || "",
     });
+    setShowAccount(false);
     setBankDialogOpen(true);
   };
 
@@ -243,13 +245,23 @@ export default function MyProfile() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Account Number {bankTax && "(leave blank to keep)"}</Label>
-                <Input
-                  type="password"
-                  value={bankForm.account_number}
-                  onChange={(e) => setBankForm({ ...bankForm, account_number: e.target.value })}
-                  placeholder={bankTax ? "••••••••" : "Enter account number"}
-                />
+                <Label>Account Number</Label>
+                <div className="relative">
+                  <Input
+                    type={showAccount ? "text" : "password"}
+                    value={bankForm.account_number}
+                    onChange={(e) => setBankForm({ ...bankForm, account_number: e.target.value })}
+                    placeholder={"Enter account number"}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAccount((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showAccount ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
             </div>
 
