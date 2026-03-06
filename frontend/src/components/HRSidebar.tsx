@@ -125,7 +125,7 @@ const employeeSections: NavSection[] = [
     items: [
       { title: "My Profile", url: "/profile", icon: User },
       { title: "Documents", url: "/documents", icon: FileText },
-      { title: "Onboarding", url: "/onboarding", icon: ListChecks },
+      // { title: "Onboarding", url: "/onboarding", icon: ListChecks },
     ],
   },
   {
@@ -144,7 +144,7 @@ const employeeSections: NavSection[] = [
     items: [
       { title: "My Training", url: "/my-training", icon: BookOpen },
       { title: "My Performance", url: "/my-performance", icon: Target },
-      { title: "My Interviews", url: "/my-interviews", icon: Video },
+      { title: "Assignments", url: "/my-interviews", icon: Video },
       { title: "Surveys", url: "/surveys", icon: ClipboardList },
     ],
   },
