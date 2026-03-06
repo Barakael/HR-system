@@ -24,13 +24,47 @@ class BankTaxDetailController extends Controller
         return response()->json(BankTaxDetailResource::collection($records)->response()->getData(true));
     }
 
+    // Employee self-service: get or upsert their own record
+    public function mine(Request $request): JsonResponse
+    {
+        $record = BankTaxDetail::firstOrNew(['user_id' => $request->user()->id]);
+        $record->load('user');
+        return response()->json(new BankTaxDetailResource($record));
+    }
+
+    public function updateMine(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'bank_name'          => 'nullable|string|max:255',
+            'account_name'       => 'nullable|string|max:255',
+            'account_type'       => 'nullable|string|max:50',
+            'account_number'     => 'nullable|string|max:50',
+            'sort_code'          => 'nullable|string|max:20',
+            'swift_bic'          => 'nullable|string|max:30',
+            'iban'               => 'nullable|string|max:50',
+            'tax_code'           => 'nullable|string|max:20',
+            'national_insurance' => 'nullable|string|max:20',
+        ]);
+
+        $record = BankTaxDetail::updateOrCreate(
+            ['user_id' => $request->user()->id],
+            $data
+        );
+
+        return response()->json(new BankTaxDetailResource($record->load('user')));
+    }
+
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
             'user_id'            => 'required|exists:users,id|unique:bank_tax_details,user_id',
             'bank_name'          => 'nullable|string|max:255',
+            'account_name'       => 'nullable|string|max:255',
+            'account_type'       => 'nullable|string|max:50',
             'account_number'     => 'nullable|string|max:50',
             'sort_code'          => 'nullable|string|max:20',
+            'swift_bic'          => 'nullable|string|max:30',
+            'iban'               => 'nullable|string|max:50',
             'tax_code'           => 'nullable|string|max:20',
             'national_insurance' => 'nullable|string|max:20',
         ]);
@@ -50,8 +84,12 @@ class BankTaxDetailController extends Controller
     {
         $data = $request->validate([
             'bank_name'          => 'nullable|string|max:255',
+            'account_name'       => 'nullable|string|max:255',
+            'account_type'       => 'nullable|string|max:50',
             'account_number'     => 'nullable|string|max:50',
             'sort_code'          => 'nullable|string|max:20',
+            'swift_bic'          => 'nullable|string|max:30',
+            'iban'               => 'nullable|string|max:50',
             'tax_code'           => 'nullable|string|max:20',
             'national_insurance' => 'nullable|string|max:20',
         ]);
