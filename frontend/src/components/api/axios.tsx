@@ -34,13 +34,25 @@ api.interceptors.request.use((config) => {
 });
 
 // ── Response interceptor ─────────────────────────────────────────────────────
-// Redirect to /login on 401 so every page gets automatic session expiry handling.
+// On 401, clear the stored token and navigate to /login.
+// Exceptions:
+//   • The login endpoint itself — a wrong-password 401 should surface as an error to the caller.
+//   • Requests from the login page — no redirect needed when already there.
+// A flag prevents multiple simultaneous expired-token requests from each
+// triggering their own redirect (common with Tanstack Query parallel fetches).
+let _redirectingToLogin = false;
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const isLoginRequest = error.config?.url?.includes("/auth/login");
+    const alreadyOnLogin = window.location.pathname === "/login";
+
+    if (error.response?.status === 401 && !isLoginRequest && !alreadyOnLogin && !_redirectingToLogin) {
+      _redirectingToLogin = true;
       localStorage.removeItem("auth_token");
-      window.location.href = "/login";
+      // Use replace so the browser back-button doesn't return to the broken page.
+      window.location.replace("/login");
     }
     return Promise.reject(error);
   }
