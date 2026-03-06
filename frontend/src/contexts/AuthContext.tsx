@@ -65,8 +65,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const raw = { ...data.user, role: data.role ?? (data.user.role as string) };
         setCurrentUser(mapUser(raw));
       })
-      .catch(() => {
-        localStorage.removeItem("auth_token");
+      .catch((error) => {
+        // Only clear the token if the server explicitly rejects it (401).
+        // Network errors (backend down, CORS hiccup) should NOT log the user out.
+        if (error?.response?.status === 401) {
+          localStorage.removeItem("auth_token");
+        }
       })
       .finally(() => setLoading(false));
   }, []);
