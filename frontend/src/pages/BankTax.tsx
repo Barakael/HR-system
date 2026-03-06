@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Landmark, Users, Search, Pencil, Trash2, Loader2, AlertTriangle } from "lucide-react";
+import { Plus, Landmark, Users, Search, Pencil, Trash2, Loader2, AlertTriangle, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useBankTaxDetails, useCreateBankTax, useUpdateBankTax, useDeleteBankTax, BankTaxRecord } from "@/hooks/api/useBankTax";
 import { useEmployees } from "@/hooks/api/useEmployees";
@@ -21,6 +21,15 @@ const BankTax = () => {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<BankTaxRecord | null>(null);
+  const [showAccount, setShowAccount] = useState(false);
+  const [revealedRows, setRevealedRows] = useState<Set<number>>(new Set());
+
+  const toggleReveal = (id: number) =>
+    setRevealedRows((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   const [form, setForm] = useState({
     user_id: "",
     bank_name: "",
@@ -35,6 +44,7 @@ const BankTax = () => {
   const openAdd = () => {
     setEditing(null);
     setForm({ user_id: "", bank_name: "", account_name: "", account_type: "", account_number: "" });
+    setShowAccount(false);
     setDialogOpen(true);
   };
 
@@ -45,7 +55,7 @@ const BankTax = () => {
       bank_name: record.bank_name || "",
       account_name: record.account_name || "",
       account_type: record.account_type || "",
-      account_number: "",
+      account_number: record.account_number || "",
     });
     setDialogOpen(true);
   };
@@ -165,7 +175,20 @@ const BankTax = () => {
                     <td className="px-5 py-3 text-card-foreground">{rec.bank_name || "—"}</td>
                     <td className="px-5 py-3 text-card-foreground">{rec.account_name || "—"}</td>
                     <td className="px-5 py-3 text-card-foreground">{rec.account_type || "—"}</td>
-                    <td className="px-5 py-3 text-card-foreground font-mono">{rec.masked_account || "—"}</td>
+                    <td className="px-5 py-3 text-card-foreground font-mono">
+                      <div className="flex items-center gap-1">
+                        <span>{revealedRows.has(rec.id) ? (rec.account_number || "—") : (rec.masked_account || "—")}</span>
+                        {rec.account_number && (
+                          <button
+                            type="button"
+                            onClick={() => toggleReveal(rec.id)}
+                            className="text-muted-foreground hover:text-foreground ml-1"
+                          >
+                            {revealedRows.has(rec.id) ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          </button>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-5 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(rec)}>
@@ -227,13 +250,23 @@ const BankTax = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Account Number {editing && "(leave blank to keep)"}</Label>
-                <Input
-                  type="password"
-                  value={form.account_number}
-                  onChange={(e) => setForm({ ...form, account_number: e.target.value })}
-                  placeholder={editing ? "••••••••" : "Enter account number"}
-                />
+                <Label>Account Number</Label>
+                <div className="relative">
+                  <Input
+                    type={showAccount ? "text" : "password"}
+                    value={form.account_number}
+                    onChange={(e) => setForm({ ...form, account_number: e.target.value })}
+                    placeholder={"Enter account number"}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAccount((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showAccount ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
             </div>
 

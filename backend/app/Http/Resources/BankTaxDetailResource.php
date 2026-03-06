@@ -17,6 +17,7 @@ class BankTaxDetailResource extends JsonResource
             'account_name'       => $this->account_name,
             'account_type'       => $this->account_type,
             'masked_account'     => $this->masked_account,
+            'account_number'     => $this->account_number,
             'sort_code'          => $this->sort_code,
             'swift_bic'          => $this->swift_bic,
             'iban'               => $this->iban,
