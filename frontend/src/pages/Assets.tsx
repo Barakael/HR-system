@@ -168,7 +168,7 @@ const Assets = () => {
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
         <div className="bg-card rounded-lg border border-border p-5 shadow-sm flex items-center gap-4">
           <div className="p-2.5 rounded-lg bg-blue-500/10"><Package className="h-5 w-5 text-blue-500" /></div>
-          <div><p className="text-2xl font-bold text-card-foreground">{assets.length}</p><p className="text-sm text-muted-foreground">Asset Groups</p></div>
+          <div><p className="text-2xl font-bold text-card-foreground">{assets.length}</p><p className="text-sm text-muted-foreground">Assets Recorded</p></div>
         </div>
         <div className="bg-card rounded-lg border border-border p-5 shadow-sm flex items-center gap-4">
           <div className="p-2.5 rounded-lg bg-purple-500/10"><FolderOpen className="h-5 w-5 text-purple-500" /></div>

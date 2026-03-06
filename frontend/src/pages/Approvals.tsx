@@ -53,6 +53,7 @@ const Approvals = () => {
                   <th className="text-left px-5 py-3 font-medium text-muted-foreground">Type</th>
                   <th className="text-left px-5 py-3 font-medium text-muted-foreground">Period</th>
                   <th className="text-left px-5 py-3 font-medium text-muted-foreground">Days</th>
+                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">Reason</th>
                   <th className="text-left px-5 py-3 font-medium text-muted-foreground">Status</th>
                   <th className="text-right px-5 py-3 font-medium text-muted-foreground">Actions</th>
                 </tr>
@@ -66,6 +67,13 @@ const Approvals = () => {
                     </td>
                     <td className="px-5 py-3.5 text-muted-foreground">{r.from} – {r.to}</td>
                     <td className="px-5 py-3.5 text-muted-foreground">{r.days}</td>
+                    <td className="px-5 py-3.5 text-muted-foreground max-w-[220px]">
+                      {r.reason ? (
+                        <span className="block truncate" title={r.reason}>{r.reason}</span>
+                      ) : (
+                        <span className="text-muted-foreground/40">—</span>
+                      )}
+                    </td>
                     <td className="px-5 py-3.5">
                       <StatusBadge label={r.status} variant={r.status === "Approved" ? "success" : r.status === "Rejected" ? "destructive" : "warning"} />
                     </td>

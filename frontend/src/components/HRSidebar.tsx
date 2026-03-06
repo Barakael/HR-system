@@ -75,7 +75,7 @@ const hrAdminSections: NavSection[] = [
   {
     label: "Time & Leave",
     items: [
-      { title: "Leave", url: "/leave", icon: CalendarDays },
+      // { title: "Leave", url: "/leave", icon: CalendarDays },
       { title: "Attendance", url: "/attendance", icon: Clock },
       { title: "Approvals", url: "/approvals", icon: CheckSquare },
     ],
@@ -192,8 +192,8 @@ export function HRSidebar() {
       <div className="flex items-center justify-between px-4 h-20 border-b border-border">
         {!collapsed && (
           <div className="flex items-center gap-2">
-            <Briefcase className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            <span className="font-semibold text-base text-gray-900 dark:text-white tracking-tight">
+            <Briefcase className="h-6 w-6 text-emerald-900 dark:text-blue-400" />
+            <span className="font-semibold text-base text-emerald-900 dark:text-white tracking-tight">
             HR Portal
             </span>
           </div>
@@ -234,13 +234,13 @@ export function HRSidebar() {
                         end
                         className={cn(
                           "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-all duration-150",
-                          "hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white",
+                          "hover:bg-green-50 dark:hover:bg-emerald-900/70 hover:text-gray-900 dark:hover:text-white",
                           collapsed && "justify-center px-0"
                         )}
-                        activeClassName="bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium"
+                        activeClassName="bg-green-50 dark:bg-emerald-900/40 text-emerald-900 dark:text-emerald-300 font-medium"
                         title={collapsed ? item.title : undefined}
                       >
-                        <item.icon className={cn("h-4 w-4 shrink-0", isActive && "text-blue-600 dark:text-blue-400")} />
+                        <item.icon className={cn("h-4 w-4 shrink-0", isActive && "text-emerald-600 dark:text-emerald-400")} />
                         {!collapsed && <span>{item.title}</span>}
                       </NavLink>
                     </li>
