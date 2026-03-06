@@ -87,6 +87,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/training/{training}/enrollments',                    [TrainingController::class, 'enrollments']);
         Route::post('/training/{training}/enroll',                        [TrainingController::class, 'enroll']);
         Route::post('/training/{training}/assign-trainees',               [TrainingController::class, 'assignTrainees']);
+        Route::post('/training/{training}/assign-by-department',          [TrainingController::class, 'assignByDepartment']);
+        Route::get('/training/{training}/attendees',                      [TrainingController::class, 'attendees']);
+        Route::patch('/training/{training}/enrollments/{enrollment}/attended', [TrainingController::class, 'markAttended']);
         Route::patch('/training/{training}/enrollments/{enrollment}',     [TrainingController::class, 'updateEnrollment']);
 
         // Payslips
@@ -126,6 +129,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/surveys',                       [SurveyController::class, 'store']);
         Route::delete('/surveys/{survey}',            [SurveyController::class, 'destroy']);
         Route::post('/surveys/{survey}/respond',      [SurveyController::class, 'respond']);
+        Route::get('/surveys/{survey}/responses',     [SurveyController::class, 'responses']);
 
         // Policies & Rules
         Route::get('/policies',              [PolicyController::class, 'index']);
