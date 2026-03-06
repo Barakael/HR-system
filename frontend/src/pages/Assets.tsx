@@ -38,7 +38,7 @@ const Assets = () => {
   const [assetForm, setAssetForm] = useState({
     asset_tag: "", name: "", category_id: "", serial_number: "",
     purchase_date: "", purchase_price: "", warranty_expiry: "",
-    station_id: "", description: "",
+    station_id: "", description: "", quantity: "",
   });
 
   // Category dialog
@@ -52,7 +52,7 @@ const Assets = () => {
     setAssetForm({
       asset_tag: "", name: "", category_id: "", serial_number: "",
       purchase_date: "", purchase_price: "", warranty_expiry: "",
-      station_id: "", description: "",
+      station_id: "", description: "", quantity: "",
     });
     setAssetDialogOpen(true);
   };
@@ -69,6 +69,7 @@ const Assets = () => {
       warranty_expiry: a.warranty_expiry ?? "",
       station_id: a.station_id ? String(a.station_id) : "",
       description: a.description ?? "",
+      quantity: String(a.quantity ?? 1),
     });
     setAssetDialogOpen(true);
   };
@@ -88,6 +89,7 @@ const Assets = () => {
       warranty_expiry: assetForm.warranty_expiry || null,
       station_id: assetForm.station_id ? Number(assetForm.station_id) : null,
       description: assetForm.description || null,
+      quantity: assetForm.quantity ? Number(assetForm.quantity) : 1,
     };
     try {
       if (editingAsset) {
@@ -229,6 +231,7 @@ const Assets = () => {
                       <th className="text-left px-4 py-3 font-medium text-muted-foreground">Serial #</th>
                       <th className="text-left px-4 py-3 font-medium text-muted-foreground">Station</th>
                       <th className="text-left px-4 py-3 font-medium text-muted-foreground">Purchase Date</th>
+                      <th className="text-right px-4 py-3 font-medium text-muted-foreground">Qty</th>
                       <th className="text-right px-4 py-3 font-medium text-muted-foreground">Price</th>
                       <th className="text-left px-4 py-3 font-medium text-muted-foreground">Warranty</th>
                       <th className="text-right px-4 py-3 font-medium text-muted-foreground">Actions</th>
@@ -245,6 +248,7 @@ const Assets = () => {
                           <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{asset.serial_number || "—"}</td>
                           <td className="px-4 py-3 text-muted-foreground">{asset.station_name || "—"}</td>
                           <td className="px-4 py-3 text-muted-foreground">{asset.purchase_date ? new Date(asset.purchase_date).toLocaleDateString() : "—"}</td>
+                          <td className="px-4 py-3 text-right text-muted-foreground">{asset.quantity ?? 1}</td>
                           <td className="px-4 py-3 text-right text-muted-foreground">{asset.purchase_price != null ? Number(asset.purchase_price).toLocaleString() : "—"}</td>
                           <td className="px-4 py-3">
                             {asset.warranty_expiry ? (
@@ -372,6 +376,13 @@ const Assets = () => {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Quantity <span className="text-muted-foreground">(default 1)</span></Label>
+                <Input type="number" min="1" value={assetForm.quantity} onChange={(e) => setAssetForm({ ...assetForm, quantity: e.target.value })} placeholder="1" />
               </div>
             </div>
 
