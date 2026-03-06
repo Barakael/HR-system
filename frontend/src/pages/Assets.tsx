@@ -156,6 +156,7 @@ const Assets = () => {
   };
 
   const totalValue = assets.reduce((s, a) => s + (Number(a.purchase_price) || 0), 0);
+  const totalQuantity = assets.reduce((s, a) => s + (a.quantity ?? 1), 0);
 
   return (
     <HRLayout
@@ -167,7 +168,7 @@ const Assets = () => {
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
         <div className="bg-card rounded-lg border border-border p-5 shadow-sm flex items-center gap-4">
           <div className="p-2.5 rounded-lg bg-blue-500/10"><Package className="h-5 w-5 text-blue-500" /></div>
-          <div><p className="text-2xl font-bold text-card-foreground">{assets.length}</p><p className="text-sm text-muted-foreground">Total Assets</p></div>
+          <div><p className="text-2xl font-bold text-card-foreground">{assets.length}</p><p className="text-sm text-muted-foreground">Asset Groups</p></div>
         </div>
         <div className="bg-card rounded-lg border border-border p-5 shadow-sm flex items-center gap-4">
           <div className="p-2.5 rounded-lg bg-purple-500/10"><FolderOpen className="h-5 w-5 text-purple-500" /></div>
@@ -179,7 +180,11 @@ const Assets = () => {
         </div>
         <div className="bg-card rounded-lg border border-border p-5 shadow-sm flex items-center gap-4">
           <div className="p-2.5 rounded-lg bg-yellow-500/10"><Package className="h-5 w-5 text-yellow-500" /></div>
-          <div><p className="text-2xl font-bold text-card-foreground">{totalValue.toLocaleString()}</p><p className="text-sm text-muted-foreground">Total Value</p></div>
+          <div>
+            <p className="text-2xl font-bold text-card-foreground">{totalQuantity.toLocaleString()}</p>
+            <p className="text-sm text-muted-foreground">Total Assets</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Value: {totalValue.toLocaleString()}</p>
+          </div>
         </div>
       </div>
 
@@ -355,10 +360,13 @@ const Assets = () => {
                 <Label>Purchase Date</Label>
                 <Input type="date" value={assetForm.purchase_date} onChange={(e) => setAssetForm({ ...assetForm, purchase_date: e.target.value })} />
               </div>
+              
+            <div className=" gap-4">
               <div className="space-y-2">
-                <Label>Purchase Price <span className="text-muted-foreground">(optional)</span></Label>
-                <Input type="number" step="0.01" min="0" value={assetForm.purchase_price} onChange={(e) => setAssetForm({ ...assetForm, purchase_price: e.target.value })} placeholder="0.00" />
+                <Label>Quantity <span className="text-muted-foreground">(default 1)</span></Label>
+                <Input type="number" min="1" value={assetForm.quantity} onChange={(e) => setAssetForm({ ...assetForm, quantity: e.target.value })} placeholder="1" />
               </div>
+            </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -376,13 +384,6 @@ const Assets = () => {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Quantity <span className="text-muted-foreground">(default 1)</span></Label>
-                <Input type="number" min="1" value={assetForm.quantity} onChange={(e) => setAssetForm({ ...assetForm, quantity: e.target.value })} placeholder="1" />
               </div>
             </div>
 
