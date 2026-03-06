@@ -99,7 +99,22 @@ export function AiChatWidget() {
   const renderContent = (content: string) => {
     // Simple markdown-like rendering for tables and bold
     const lines = content.split("\n");
+    let inSqlBlock = false;
+    
     return lines.map((line, i) => {
+      // Hide SQL code blocks (technical details)
+      if (line.startsWith("```sql")) {
+        inSqlBlock = true;
+        return null;
+      }
+      if (line.startsWith("```") && inSqlBlock) {
+        inSqlBlock = false;
+        return null;
+      }
+      if (inSqlBlock) {
+        return null; // Skip SQL query lines
+      }
+
       // Bold text
       let processed = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
       // Inline code
@@ -118,9 +133,6 @@ export function AiChatWidget() {
           </div>
         );
       }
-
-      if (line.startsWith("```sql")) return <div key={i} className="text-[10px] text-muted-foreground mt-1">SQL Query:</div>;
-      if (line.startsWith("```")) return null;
 
       return (
         <p key={i} className="text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: processed || "&nbsp;" }} />
