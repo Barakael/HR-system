@@ -125,7 +125,72 @@ class TrainingController extends Controller
         return response()->json($enrollments);
     }
 
-    // --- Bulk assign trainees ---
+    // --- Bulk assign by department ---
+
+    public function assignByDepartment(Request $request, TrainingProgram $training): JsonResponse
+    {
+        $data = $request->validate([
+            'all_departments'   => 'nullable|boolean',
+            'department_ids'    => 'nullable|array',
+            'department_ids.*'  => 'exists:departments,id',
+        ]);
+
+        if (!empty($data['all_departments'])) {
+            $userIds = \App\Models\EmployeeProfile::pluck('user_id');
+        } else {
+            if (empty($data['department_ids'])) {
+                return response()->json(['message' => 'Please provide department_ids or set all_departments to true'], 422);
+            }
+            $userIds = \App\Models\EmployeeProfile::whereIn('department_id', $data['department_ids'])->pluck('user_id');
+        }
+
+        $created = 0;
+        foreach ($userIds as $userId) {
+            $exists = TrainingEnrollment::where('training_program_id', $training->id)
+                ->where('user_id', $userId)->exists();
+            if (!$exists) {
+                TrainingEnrollment::create([
+                    'training_program_id' => $training->id,
+                    'user_id'             => $userId,
+                    'status'              => 'Not Started',
+                    'progress'            => 0,
+                    'attended'            => false,
+                ]);
+                $created++;
+            }
+        }
+
+        return response()->json([
+            'message'        => "{$created} employee(s) assigned",
+            'assigned_count' => $created,
+        ], 201);
+    }
+
+    // --- Attendees list ---
+
+    public function attendees(TrainingProgram $training): JsonResponse
+    {
+        $enrollments = $training->enrollments()->with('user')->get()->map(fn($e) => [
+            'enrollment_id' => $e->id,
+            'user_id'       => $e->user_id,
+            'name'          => $e->user?->name,
+            'email'         => $e->user?->email,
+            'status'        => $e->status,
+            'attended'      => (bool) $e->attended,
+        ]);
+        return response()->json($enrollments);
+    }
+
+    // --- Mark attended ---
+
+    public function markAttended(Request $request, TrainingProgram $training, TrainingEnrollment $enrollment): JsonResponse
+    {
+        $data = $request->validate(['attended' => 'required|boolean']);
+        $enrollment->update($data);
+        return response()->json(['enrollment_id' => $enrollment->id, 'attended' => (bool) $enrollment->attended]);
+    }
+
+    // --- Bulk assign trainees (by user IDs) ---
 
     public function assignTrainees(Request $request, TrainingProgram $training): JsonResponse
     {

@@ -11,10 +11,16 @@ class TicketController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = SupportTicket::with('user:id,name', 'assignee:id,name');
+        $query = SupportTicket::with('user:id,name', 'assignee:id,name', 'department:id,name');
 
         if (!$request->user()->hasRole('hr_admin')) {
-            $query->where('user_id', $request->user()->id);
+            $userDeptId = $request->user()->profile?->department_id;
+            $query->where(function ($q) use ($request, $userDeptId) {
+                $q->where('user_id', $request->user()->id);
+                if ($userDeptId) {
+                    $q->orWhere('department_id', $userDeptId);
+                }
+            });
         }
 
         if ($status = $request->get('status')) {
@@ -27,17 +33,18 @@ class TicketController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'subject'     => 'required|string|max:255',
-            'description' => 'required|string',
-            'category'    => 'required|string',
-            'priority'    => 'in:Low,Medium,High,Critical',
+            'subject'       => 'required|string|max:255',
+            'description'   => 'required|string',
+            'category'      => 'required|string',
+            'priority'      => 'in:Low,Medium,High,Critical',
+            'department_id' => 'nullable|exists:departments,id',
         ]);
 
         $ticket = SupportTicket::create([
             ...$data,
-            'user_id'  => $request->user()->id,
-            'priority' => $data['priority'] ?? 'Medium',
-            'status'   => 'Open',
+            'user_id'       => $request->user()->id,
+            'priority'      => $data['priority'] ?? 'Medium',
+            'status'        => 'Open',
         ]);
 
         return response()->json($ticket->load('user:id,name'), 201);
